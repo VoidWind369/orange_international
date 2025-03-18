@@ -4,21 +4,21 @@ use sqlx::{ConnectOptions, Error, PgPool, Pool, Postgres};
 use tokio::io::AsyncReadExt;
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
-struct Config {
+pub struct Config {
     server: Option<ConfigServer>,
     database: Option<ConfigDatabase>,
     redis: Option<ConfigDatabase>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct ConfigServer {
+pub struct ConfigServer {
     url: Option<String>,
     path: Option<String>,
     port: Option<u16>,
 }
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
-struct ConfigDatabase {
+pub struct ConfigDatabase {
     url: Option<String>,
     host: Option<String>,
     port: Option<u16>,
@@ -49,6 +49,18 @@ impl Config {
             .expect("read str error");
         serde_yml::from_str::<Config>(yaml_str.as_str()).expect("config error")
     }
+
+    pub fn get_server(&self) -> ConfigServer {
+        self.server.as_ref().unwrap().clone()
+    }
+
+    pub fn get_database(&self) -> ConfigDatabase {
+        self.database.as_ref().unwrap().clone()
+    }
+
+    pub fn get_redis(&self) -> ConfigDatabase {
+        self.redis.as_ref().unwrap().clone()
+    }
 }
 
 impl Default for ConfigServer {
@@ -58,6 +70,20 @@ impl Default for ConfigServer {
             port: Some(50000),
             url: Some("0.0.0.0:50000".to_string()),
         }
+    }
+}
+
+impl ConfigServer {
+    pub fn get_port(&self) -> u16 {
+        self.port.unwrap_or(50000)
+    }
+
+    pub fn get_url(&self) -> String {
+        self.url.as_ref().unwrap_or("0.0.0.0:50000".as_ref()).clone()
+    }
+
+    pub fn get_path(&self) -> String {
+        self.path.as_ref().unwrap_or("0.0.0.0".as_ref()).clone()
     }
 }
 
