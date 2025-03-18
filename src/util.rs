@@ -92,9 +92,9 @@ impl ConfigDatabase {
         let option = PgConnectOptions::new()
             .host(&self.host.unwrap_or_default())
             .port(self.port.unwrap_or_default())
+            .database(&self.name.unwrap_or_default())
             .username(&self.username.unwrap_or_default())
-            .password(&self.password.unwrap_or_default())
-            .ssl_mode(PgSslMode::Require);
+            .password(&self.password.unwrap_or_default());
         PgPool::connect_with(option).await.expect("connect error")
     }
 

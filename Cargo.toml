@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 tokio = { version = "1.44.1", features = ["full"] }
 tower = { version = "0.5.2", features = ["full"] }
-sqlx = { version = "0.8.3", features = ["chrono", "postgres", "json", "uuid"] }
+sqlx = { version = "0.8.3", features = ["runtime-tokio", "chrono", "postgres", "json", "uuid"] }
 redis = { version = "0.29.1", features = ["json", "uuid"] }
 axum = { version = "0.8.1", features = ["json", "tokio"] }
 serde = { version = "1.0.219", features = ["derive"] }
