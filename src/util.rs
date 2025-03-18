@@ -41,7 +41,7 @@ impl Config {
     pub async fn get() -> Self {
         let mut yaml_file = tokio::fs::File::open("config.yaml")
             .await
-            .expect("read config error");
+            .expect("找不到config.yaml");
         let mut yaml_str = String::new();
         yaml_file
             .read_to_string(&mut yaml_str)
@@ -50,16 +50,16 @@ impl Config {
         serde_yml::from_str::<Config>(yaml_str.as_str()).expect("config error")
     }
 
-    pub fn get_server(&self) -> ConfigServer {
-        self.server.as_ref().unwrap().clone()
+    pub fn get_server(self) -> ConfigServer {
+        self.server.unwrap_or_default()
     }
 
-    pub fn get_database(&self) -> ConfigDatabase {
-        self.database.as_ref().unwrap().clone()
+    pub fn get_database(self) -> ConfigDatabase {
+        self.database.unwrap_or_default()
     }
 
-    pub fn get_redis(&self) -> ConfigDatabase {
-        self.redis.as_ref().unwrap().clone()
+    pub fn get_redis(self) -> ConfigDatabase {
+        self.redis.unwrap_or_default()
     }
 }
 
@@ -79,11 +79,11 @@ impl ConfigServer {
     }
 
     pub fn get_url(&self) -> String {
-        self.url.as_ref().unwrap_or("0.0.0.0:50000".as_ref()).clone()
+        self.url.as_ref().unwrap_or(&"0.0.0.0:50000".to_string()).clone()
     }
 
     pub fn get_path(&self) -> String {
-        self.path.as_ref().unwrap_or("0.0.0.0".as_ref()).clone()
+        self.path.as_ref().unwrap_or(&"0.0.0.0".to_string()).clone()
     }
 }
 
@@ -102,6 +102,6 @@ impl ConfigDatabase {
     /// Redis
     /// Need redis connect url
     pub fn redis(self) {
-        let con = redis::Client::open(&self.url);
+        let con = redis::Client::open(self.url.unwrap());
     }
 }

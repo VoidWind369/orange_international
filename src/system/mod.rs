@@ -4,5 +4,5 @@ use axum::routing::get;
 mod user;
 
 pub fn router(app: Router) -> Router {
-    app.route("/", get(|| async { "Is system time!" }))
+    app.route("/orange", get(|| async { "Is system time!" }))
 }
