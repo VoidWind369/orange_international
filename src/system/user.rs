@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
 use uuid::Uuid;
-use void_log::log_info;
+use void_log::{log_error, log_info};
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct User {
@@ -34,13 +34,13 @@ impl User {
             .unwrap()
             .to_string()
     }
-    async fn select(conn: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
+    pub async fn select(conn: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as::<_, User>("select * from public.\"user\"")
             .fetch_all(conn)
             .await
     }
 
-    async fn insert(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn insert(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         let password = self.get_password_hash();
         query("insert into public.\"user\" values(DEFAULT, $1, $2, $3, $4, $5, $6, $6, $7)")
@@ -55,7 +55,7 @@ impl User {
             .await
     }
 
-    async fn update(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn update(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("update public.user set name = $1, email = $2, status = $3, phone = $4, updated_time = $5, where id = $6")
             .bind(&self.name)
@@ -68,7 +68,7 @@ impl User {
             .await
     }
 
-    async fn update_password(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn update_password(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         let password = self.get_password_hash();
         query("update public.user set password = $1, set update_time = $2 where id = $3")
@@ -79,21 +79,35 @@ impl User {
             .await
     }
 
-    async fn delete(id: Uuid, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn delete(id: Uuid, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         query("delete from public.user where id = $1")
             .bind(id)
             .execute(conn)
             .await
     }
-}
 
-fn verify_password(password: &str, password_hash: &str) -> bool {
-    let argon2 = Argon2::default();
-    // 验证密码
-    let parsed_hash = PasswordHash::new(password_hash).unwrap();
-    argon2
-        .verify_password(password.as_bytes(), &parsed_hash)
-        .is_ok()
+    fn verify_password(&self, password_hash: &str) -> bool {
+        let argon2 = Argon2::default();
+        // 验证密码
+        if let Ok(parsed_hash) = PasswordHash::new(password_hash) {
+            argon2
+                .verify_password(&self.password.as_bytes(), &parsed_hash)
+                .is_ok()
+        } else {
+            log_error!("数据库密码存储错误");
+            false
+        }
+    }
+
+    pub async fn verify_login(&self, conn: &Pool<Postgres>) -> bool {
+        let data_user =
+            query_as::<_, User>("select * from public.\"user\" where email = $1 or code = $1")
+                .bind(&self.email)
+                .fetch_one(conn)
+                .await
+                .unwrap();
+        self.verify_password(&data_user.password)
+    }
 }
 
 #[tokio::test]
@@ -124,6 +138,19 @@ async fn test2() {
         let a = a.format("%Y-%m-%d %H:%M:%S").to_string();
         log_info!("{a} {}", user.get_password_hash())
     }
+}
+
+#[tokio::test]
+async fn test3() {
+    let config = Config::get().await;
+    let pool = config.get_database().get().await;
+    let users = User {
+        email: "mzx1@orgvoid.top".to_string(),
+        password: "123456".to_string(),
+        ..Default::default()
+    };
+    let a = users.verify_login(&pool).await;
+    log_info!("{:?}", a);
 }
 
 #[tokio::test]
