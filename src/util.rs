@@ -50,16 +50,16 @@ impl Config {
         serde_yml::from_str::<Config>(yaml_str.as_str()).expect("config error")
     }
 
-    pub fn get_server(self) -> ConfigServer {
-        self.server.unwrap_or_default()
+    pub fn get_server(&self) -> ConfigServer {
+        self.server.clone().unwrap_or_default()
     }
 
-    pub fn get_database(self) -> ConfigDatabase {
-        self.database.unwrap_or_default()
+    pub fn get_database(&self) -> ConfigDatabase {
+        self.database.clone().unwrap_or_default()
     }
 
-    pub fn get_redis(self) -> ConfigDatabase {
-        self.redis.unwrap_or_default()
+    pub fn get_redis(&self) -> ConfigDatabase {
+        self.redis.clone().unwrap_or_default()
     }
 }
 

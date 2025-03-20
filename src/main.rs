@@ -1,22 +1,31 @@
+use crate::util::Config;
 use axum::Router;
 use axum::routing::get;
+use sqlx::{Pool, Postgres};
 use void_log::log_info;
-use crate::util::Config;
 
-mod system;
 mod orange;
+mod system;
 mod util;
 
+#[derive(Clone)]
+struct AppState {
+    pool: Pool<Postgres>,
+}
+
 pub async fn run() {
-    let config = Config::get().await.get_server();
-    let address = format!(
-        "{}:{}",
-        &config.get_path(),
-        &config.get_port()
-    );
+    let config = Config::get().await;
+    let server = config.get_server();
+    let database = config.get_database();
+    let app_state = AppState {
+        pool: database.get().await,
+    };
+    let address = format!("{}:{}", &server.get_path(), &server.get_port());
     log_info!("启动参数: {}", &address);
 
-    let mut app = Router::new().route("/", get(|| async { "Is run time!" }));
+    let mut app = Router::new()
+        .with_state(app_state)
+        .route("/", get(|| async { "Is run time!" }));
     app = system::router(app);
     app = orange::router(app);
 
