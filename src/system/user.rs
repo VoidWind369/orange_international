@@ -1,54 +1,137 @@
-use crate::util;
-use chrono::{Local, NaiveDateTime};
+use crate::util::Config;
+use argon2::password_hash::SaltString;
+use argon2::password_hash::rand_core::OsRng;
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use chrono::{DateTime, Local, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::{PgPoolOptions, PgQueryResult};
-use sqlx::{Error, FromRow, Pool, Postgres};
+use sqlx::postgres::PgQueryResult;
+use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
 use uuid::Uuid;
 use void_log::log_info;
 
-#[derive(Debug, Clone, PartialEq, Default, FromRow)]
+#[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct User {
     id: Uuid,
     name: String,
     email: String,
     status: i16,
     code: String,
-    phone: String,
-    created_time: NaiveDateTime,
-    updated_time: NaiveDateTime,
+    phone: Option<String>,
+    #[serde(skip_deserializing)]
+    create_time: DateTime<Utc>,
+    #[serde(skip_deserializing)]
+    update_time: DateTime<Utc>,
     password: String,
 }
 
 impl User {
+    fn get_password_hash(&self) -> String {
+        // 密码Hash加密
+        let salt = SaltString::generate(&mut OsRng);
+        let argon2 = Argon2::default();
+        argon2
+            .hash_password(&self.password.as_bytes(), &salt)
+            .unwrap()
+            .to_string()
+    }
+    async fn select(conn: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
+        query_as::<_, User>("select * from public.\"user\"")
+            .fetch_all(conn)
+            .await
+    }
+
     async fn insert(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        let now = Local::now().naive_local();
-        let sql = "insert into public.\"user\" values(DEFAULT, $1, $2, $3, $4, $5, $6, $6, $7)";
-        sqlx::query(sql)
+        let now = Utc::now();
+        let password = self.get_password_hash();
+        query("insert into public.\"user\" values(DEFAULT, $1, $2, $3, $4, $5, $6, $6, $7)")
             .bind(&self.name)
             .bind(&self.email)
             .bind(&self.status)
             .bind(&self.code)
             .bind(&self.phone)
             .bind(now)
-            .bind(&self.password)
+            .bind(password)
+            .execute(conn)
+            .await
+    }
+
+    async fn update(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        let now = Utc::now();
+        query("update public.user set name = $1, email = $2, status = $3, phone = $4, updated_time = $5, where id = $6")
+            .bind(&self.name)
+            .bind(&self.email)
+            .bind(&self.status)
+            .bind(&self.phone)
+            .bind(now)
+            .bind(&self.id)
+            .execute(conn)
+            .await
+    }
+
+    async fn update_password(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        let now = Utc::now();
+        let password = self.get_password_hash();
+        query("update public.user set password = $1, set update_time = $2 where id = $3")
+            .bind(password)
+            .bind(now)
+            .bind(&self.id)
+            .execute(conn)
+            .await
+    }
+
+    async fn delete(id: Uuid, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        query("delete from public.user where id = $1")
+            .bind(id)
             .execute(conn)
             .await
     }
 }
 
+fn verify_password(password: &str, password_hash: &str) -> bool {
+    let argon2 = Argon2::default();
+    // 验证密码
+    let parsed_hash = PasswordHash::new(password_hash).unwrap();
+    argon2
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_ok()
+}
+
 #[tokio::test]
 async fn test() {
-    let config = util::Config::get().await;
+    let config = Config::get().await;
     let pool = config.get_database().get().await;
     let user = User {
-        name: "管理员".to_string(),
-        email: "mzx@orgvoid.top".to_string(),
+        name: "管理员1".to_string(),
+        email: "mzx1@orgvoid.top".to_string(),
         status: 1,
-        code: "admin".to_string(),
-        phone: "".to_string(),
+        code: "admin1".to_string(),
+        phone: Option::from("".to_string()),
         password: "123456".to_string(),
         ..Default::default()
     };
     let a = user.insert(&pool).await.unwrap();
     log_info!("{}", a.rows_affected())
+}
+
+#[tokio::test]
+async fn test2() {
+    let config = Config::get().await;
+    let pool = config.get_database().get().await;
+    let users = User::select(&pool).await.unwrap();
+    log_info!("{:?}", users);
+    for user in users {
+        let a = user.create_time.with_timezone(&Local);
+        let a = a.format("%Y-%m-%d %H:%M:%S").to_string();
+        log_info!("{a} {}", user.get_password_hash())
+    }
+}
+
+#[tokio::test]
+async fn delete() {
+    let config = Config::get().await;
+    let pool = config.get_database().get().await;
+    query("delete from public.user where code = 'admin1'")
+        .execute(&pool)
+        .await
+        .unwrap();
 }
