@@ -1,12 +1,8 @@
-use axum::http::HeaderMap;
-use axum::response::IntoResponse;
-use axum::{Json, Router};
-use axum::http::header::AUTHORIZATION;
-use axum::routing::get;
-use serde_json::{json, Value};
-use crate::AppState;
 use crate::system::user::User;
-use crate::util::Config;
+use crate::AppState;
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum::{Json, Router};
 
 mod user;
 
