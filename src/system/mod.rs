@@ -1,17 +1,19 @@
-use crate::system::user::User;
 use crate::AppState;
+use crate::system::user::User;
 use axum::response::IntoResponse;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
+use axum::extract::State;
 
 mod user;
 
-pub fn router(app: Router) -> Router {
+pub fn router(app: Router<AppState>) -> Router<AppState> {
     app.route("/orange", get(|| async { "Is system time!" }))
+        .route("/login", post(login))
 }
 
-async fn login(state: AppState, Json(data):Json<User>) -> impl IntoResponse {
-    let pool = state.pool;
+async fn login(State(app_state): State<AppState>, Json(data): Json<User>) -> impl IntoResponse {
+    let pool = app_state.pool;
     let password = data.verify_login(&pool).await;
     Json(password)
 }

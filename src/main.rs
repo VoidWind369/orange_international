@@ -1,7 +1,8 @@
 use crate::util::Config;
-use axum::Router;
 use axum::routing::get;
+use axum::{Router, ServiceExt};
 use sqlx::{Pool, Postgres};
+use tower_http::cors::CorsLayer;
 use void_log::log_info;
 
 mod orange;
@@ -9,8 +10,8 @@ mod system;
 mod util;
 
 #[derive(Clone)]
-struct AppState {
-    pool: Pool<Postgres>,
+pub struct AppState {
+    pub pool: Pool<Postgres>,
 }
 
 pub async fn run() {
@@ -23,11 +24,10 @@ pub async fn run() {
     let address = format!("{}:{}", &server.get_path(), &server.get_port());
     log_info!("启动参数: {}", &address);
 
-    let mut app = Router::new()
-        .with_state(app_state)
-        .route("/", get(|| async { "Is run time!" }));
+    let mut app = Router::new().route("/", get(|| async { "Is run time!" }));
     app = system::router(app);
     app = orange::router(app);
+    let app = app.with_state(app_state).layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind(&address).await.unwrap();
     axum::serve(listener, app).await.unwrap();

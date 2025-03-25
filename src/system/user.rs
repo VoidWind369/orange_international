@@ -11,11 +11,11 @@ use void_log::{log_error, log_info};
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct User {
-    id: Uuid,
-    name: String,
-    email: String,
-    status: i16,
-    code: String,
+    id: Option<Uuid>,
+    name: Option<String>,
+    email: Option<String>,
+    status: Option<i16>,
+    code: Option<String>,
     phone: Option<String>,
     #[serde(skip_deserializing)]
     create_time: DateTime<Utc>,
@@ -90,6 +90,7 @@ impl User {
         let argon2 = Argon2::default();
         // 验证密码
         if let Ok(parsed_hash) = PasswordHash::new(password_hash) {
+            log_info!("用户数据校验");
             argon2
                 .verify_password(&self.password.as_bytes(), &parsed_hash)
                 .is_ok()
@@ -105,7 +106,7 @@ impl User {
                 .bind(&self.email)
                 .fetch_one(conn)
                 .await
-                .unwrap();
+                .unwrap_or_default();
         self.verify_password(&data_user.password)
     }
 }
@@ -115,10 +116,10 @@ async fn test() {
     let config = Config::get().await;
     let pool = config.get_database().get().await;
     let user = User {
-        name: "管理员1".to_string(),
-        email: "mzx1@orgvoid.top".to_string(),
-        status: 1,
-        code: "admin1".to_string(),
+        name: Option::from("管理员1".to_string()),
+        email: Option::from("mzx1@orgvoid.top".to_string()),
+        status: Some(1),
+        code: Option::from("admin1".to_string()),
         phone: Option::from("".to_string()),
         password: "123456".to_string(),
         ..Default::default()
@@ -145,7 +146,7 @@ async fn test3() {
     let config = Config::get().await;
     let pool = config.get_database().get().await;
     let users = User {
-        email: "mzx1@orgvoid.top".to_string(),
+        email: Option::from("mzx1@orgvoid.top".to_string()),
         password: "123456".to_string(),
         ..Default::default()
     };
