@@ -1,3 +1,6 @@
+mod clan;
+mod series;
+
 use axum::Router;
 use axum::routing::get;
 use crate::AppState;

@@ -8,6 +8,7 @@ pub struct Config {
     server: Option<ConfigServer>,
     database: Option<ConfigDatabase>,
     redis: Option<ConfigDatabase>,
+    coc_api: Option<ConfigApi>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -60,6 +61,10 @@ impl Config {
 
     pub fn get_redis(&self) -> ConfigDatabase {
         self.redis.clone().unwrap_or_default()
+    }
+
+    pub fn get_api(&self) -> ConfigApi {
+        self.coc_api.clone().unwrap_or_default()
     }
 }
 

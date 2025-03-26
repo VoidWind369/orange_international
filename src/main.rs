@@ -8,6 +8,7 @@ use void_log::log_info;
 mod orange;
 mod system;
 mod util;
+mod api;
 
 #[derive(Clone)]
 pub struct AppState {
