@@ -1,7 +1,9 @@
+use crate::api;
+use axum::response::IntoResponse;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
 use sqlx::postgres::PgQueryResult;
+use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
@@ -54,5 +56,22 @@ impl Clan {
             .bind(id)
             .execute(conn)
             .await
+    }
+
+    pub async fn api_insert(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        let tag = &self.tag.clone().unwrap_or_default();
+        let clan = api::Clan::get(tag).await.api_to_orange();
+        clan.insert(conn).await
+    }
+}
+
+impl api::Clan {
+    pub fn api_to_orange(&self) -> Clan {
+        Clan {
+            tag: (&self).tag.clone(),
+            name: (&self).tag.clone(),
+            status: Some(1),
+            ..Default::default()
+        }
     }
 }
