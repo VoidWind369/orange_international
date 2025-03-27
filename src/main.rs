@@ -1,6 +1,7 @@
 use crate::util::Config;
 use axum::routing::get;
 use axum::{Router, ServiceExt};
+use r2d2::PooledConnection;
 use sqlx::{Pool, Postgres};
 use tower_http::cors::CorsLayer;
 use void_log::log_info;
@@ -18,10 +19,13 @@ pub struct AppState {
 pub async fn run() {
     let config = Config::get().await;
     let server = config.get_server();
+
+    // Database Link
     let database = config.get_database();
     let app_state = AppState {
         pool: database.get().await,
     };
+
     let address = format!("{}:{}", &server.get_path(), &server.get_port());
     log_info!("启动参数: {}", &address);
 

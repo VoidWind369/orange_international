@@ -1,3 +1,4 @@
+use crate::system::redis::UserInfo;
 use crate::util::Config;
 use argon2::password_hash::SaltString;
 use argon2::password_hash::rand_core::OsRng;
@@ -86,14 +87,23 @@ impl User {
             .await
     }
 
-    fn verify_password(&self, password_hash: &str) -> bool {
+    async fn verify_password(&self, password_hash: &str) -> bool {
         let argon2 = Argon2::default();
         // 验证密码
         if let Ok(parsed_hash) = PasswordHash::new(password_hash) {
             log_info!("用户数据校验");
-            argon2
+            let verify = argon2
                 .verify_password(&self.password.as_bytes(), &parsed_hash)
-                .is_ok()
+                .is_ok();
+            if verify {
+                let timestamp = Utc::now().timestamp();
+                let id = &self.id.unwrap();
+                let code = &self.code.clone().unwrap();
+
+                let token = format!("{}{}{}", timestamp, id, code);
+                UserInfo::new(id.clone(), token).set_user(3600).await
+            };
+            verify
         } else {
             log_error!("数据库密码存储错误");
             false
@@ -107,7 +117,7 @@ impl User {
                 .fetch_one(conn)
                 .await
                 .unwrap_or_default();
-        self.verify_password(&data_user.password)
+        self.verify_password(&data_user.password).await
     }
 }
 

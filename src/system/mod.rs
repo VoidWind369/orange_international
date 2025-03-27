@@ -8,10 +8,12 @@ use axum::{Json, Router};
 use crate::util::un_authorization;
 
 mod user;
+mod redis;
 
 pub fn router(app: Router<AppState>) -> Router<AppState> {
     app.route("/orange", get(|| async { "Is system time!" }))
         .route("/login", post(login))
+        .route("/user_insert", post(user_insert))
 }
 
 async fn login(
@@ -27,6 +29,9 @@ async fn login(
 
     let pool = app_state.pool;
     let password = data.verify_login(&pool).await;
+    if password {
+
+    }
     (StatusCode::OK, Json(password))
 }
 
