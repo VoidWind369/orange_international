@@ -1,3 +1,5 @@
+use axum::http::header::AUTHORIZATION;
+use axum::http::HeaderMap;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgSslMode};
 use sqlx::{ConnectOptions, Error, PgPool, Pool, Postgres};
@@ -108,5 +110,17 @@ impl ConfigDatabase {
     /// Need redis connect url
     pub fn redis(self) {
         let con = redis::Client::open(self.url.unwrap());
+    }
+}
+
+pub fn un_authorization(headers: HeaderMap) -> bool {
+    if let Some(authorization) = headers.get(AUTHORIZATION) {
+        if authorization.to_str().unwrap_or_default().eq("123456") {
+            false
+        } else {
+            true
+        }
+    } else {
+        true
     }
 }

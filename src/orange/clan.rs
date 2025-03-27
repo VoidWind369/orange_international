@@ -8,25 +8,38 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct Clan {
-    id: Option<Uuid>,
-    tag: Option<String>,
-    name: Option<String>,
+    pub id: Option<Uuid>,
+    pub tag: Option<String>,
+    pub name: Option<String>,
     #[serde(skip_deserializing)]
     create_time: DateTime<Utc>,
     #[serde(skip_deserializing)]
     update_time: DateTime<Utc>,
     status: Option<i16>,
-    series_id: Option<Uuid>,
+    pub series_id: Option<Uuid>,
+    id_intel: Option<bool>,
 }
 
 impl Clan {
-    pub async fn select(conn: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
+    pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as::<_, Clan>("select * from orange.clan")
-            .fetch_all(conn)
+            .fetch_all(pool)
             .await
     }
 
-    pub async fn insert(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn select_tag(
+        tag: &str,
+        is_intel: bool,
+        pool: &Pool<Postgres>,
+    ) -> Result<Self, Error> {
+        query_as::<_, Clan>("select * from orange.clan where tag = $1 and is_intel = $2")
+            .bind(tag)
+            .bind(is_intel)
+            .fetch_one(pool)
+            .await
+    }
+
+    pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("insert into orange.clan values(DEFAULT, $1, $2, $3, $3, $4, $5)")
             .bind(&self.tag)
@@ -34,11 +47,11 @@ impl Clan {
             .bind(now)
             .bind(&self.status)
             .bind(&self.series_id)
-            .execute(conn)
+            .execute(pool)
             .await
     }
 
-    pub async fn update(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn update(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("update orange.clan set tag = $1, name = $2, updated_time = $3, status = $4, series_id = $5 where id = $6")
             .bind(&self.tag)
@@ -47,14 +60,14 @@ impl Clan {
             .bind(&self.status)
             .bind(&self.series_id)
             .bind(&self.id)
-            .execute(conn)
+            .execute(pool)
             .await
     }
 
-    pub async fn delete(id: Uuid, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn delete(id: Uuid, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         query("delete from orange.clan where id = $1")
             .bind(id)
-            .execute(conn)
+            .execute(pool)
             .await
     }
 
