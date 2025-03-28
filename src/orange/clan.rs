@@ -1,9 +1,8 @@
 use crate::api;
-use axum::response::IntoResponse;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
@@ -17,7 +16,7 @@ pub struct Clan {
     update_time: DateTime<Utc>,
     status: Option<i16>,
     pub series_id: Option<Uuid>,
-    id_intel: Option<bool>,
+    is_intel: Option<bool>,
 }
 
 impl Clan {
@@ -71,6 +70,7 @@ impl Clan {
             .await
     }
 
+    /// # 接口自动更新
     pub async fn api_insert(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let tag = &self.tag.clone().unwrap_or_default();
         let clan = api::Clan::get(tag).await.api_to_orange();
@@ -82,7 +82,7 @@ impl api::Clan {
     pub fn api_to_orange(&self) -> Clan {
         Clan {
             tag: (&self).tag.clone(),
-            name: (&self).tag.clone(),
+            name: (&self).name.clone(),
             status: Some(1),
             ..Default::default()
         }

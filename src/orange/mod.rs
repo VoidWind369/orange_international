@@ -8,10 +8,10 @@ use crate::AppState;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::Value;
-
+use void_log::log_info;
 use crate::util::un_authorization;
 pub use clan::Clan;
 pub use round::Round;
@@ -19,11 +19,25 @@ pub use track::Track;
 
 pub fn router(app: Router<AppState>) -> Router<AppState> {
     let app = app
+        .route("/clans", get(clans))
         .route("/clan_api_insert", post(clan_api_insert))
         .route("/clan_insert", post(clan_insert))
         .route("/round_insert", post(round_insert))
         .route("/new_track", post(new_track));
     Router::new().nest("/orange", app)
+}
+
+/// # All Clan
+async fn clans(State(app_state): State<AppState>, headers: HeaderMap)-> impl IntoResponse {
+    // ********************鉴权********************
+    if un_authorization(headers) {
+        return (StatusCode::UNAUTHORIZED, Json(vec![]));
+    }
+    // ********************鉴权********************
+
+    let res = Clan::select_all(&app_state.pool).await.unwrap();
+    log_info!("{:?}", res);
+    (StatusCode::OK, Json(res))
 }
 
 async fn clan_api_insert(
