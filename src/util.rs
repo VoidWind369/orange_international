@@ -1,10 +1,10 @@
-use axum::http::HeaderMap;
 use axum::http::header::AUTHORIZATION;
+use axum::http::HeaderMap;
 use r2d2::PooledConnection;
 use redis::Client;
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgSslMode};
-use sqlx::{ConnectOptions, Error, PgPool, Pool, Postgres};
+use sqlx::postgres::PgConnectOptions;
+use sqlx::{PgPool, Pool, Postgres};
 use tokio::io::AsyncReadExt;
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]

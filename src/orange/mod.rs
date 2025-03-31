@@ -47,13 +47,13 @@ async fn clan_api_insert(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     if un_authorization(headers) {
-        return (StatusCode::UNAUTHORIZED, Json(0));
+        return (StatusCode::UNAUTHORIZED, Json(-1));
     }
     // ********************鉴权********************
 
     let res = data.api_insert(&app_state.pool).await;
     let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected))
+    (StatusCode::OK, Json(rows_affected as i64))
 }
 
 async fn clan_insert(
@@ -63,13 +63,13 @@ async fn clan_insert(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     if un_authorization(headers) {
-        return (StatusCode::UNAUTHORIZED, Json(0));
+        return (StatusCode::UNAUTHORIZED, Json(-1));
     }
     // ********************鉴权********************
 
     let res = data.insert(&app_state.pool).await;
     let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected))
+    (StatusCode::OK, Json(rows_affected as i64))
 }
 
 async fn round_insert(
@@ -79,16 +79,16 @@ async fn round_insert(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     if un_authorization(headers) {
-        return (StatusCode::UNAUTHORIZED, Json(0));
+        return (StatusCode::UNAUTHORIZED, Json(-1));
     }
     // ********************鉴权********************
 
     if let Some(time_str) = data["time"].as_str() {
         let res = Round::insert(time_str, &app_state.pool).await;
         let rows_affected = res.unwrap_or_default().rows_affected();
-        (StatusCode::OK, Json(rows_affected))
+        (StatusCode::OK, Json(rows_affected as i64))
     } else {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(0))
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(-2))
     }
 }
 
@@ -150,5 +150,5 @@ async fn new_track(
     let track = Track::new(self_point, rival_point, &app_state.pool).await;
     let res = track.insert(&app_state.pool).await;
     let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected))
+    (StatusCode::OK, Json(rows_affected as i64))
 }
