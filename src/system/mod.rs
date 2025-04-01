@@ -11,9 +11,10 @@ mod user;
 mod redis;
 
 pub fn router(app: Router<AppState>) -> Router<AppState> {
-    app.route("/orange", get(|| async { "Is system time!" }))
+    let app = app.route("/orange", get(|| async { "Is system time!" }))
         .route("/login", post(login))
-        .route("/user_insert", post(user_insert))
+        .route("/user_insert", post(user_insert));
+    Router::new().nest("/system", app)
 }
 
 async fn login(
