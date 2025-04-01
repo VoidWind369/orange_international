@@ -88,9 +88,9 @@ impl User {
             .await
     }
 
-    pub async fn delete(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn delete(pool: &Pool<Postgres>, id: Uuid) -> Result<PgQueryResult, Error> {
         query("delete from public.user where id = $1")
-            .bind(&self.id)
+            .bind(id)
             .execute(pool)
             .await
     }
@@ -126,7 +126,9 @@ impl User {
                 .fetch_one(pool)
                 .await
                 .unwrap_or_default();
-        data_user.verify_password(&self.password.clone().unwrap()).await
+        data_user
+            .verify_password(&self.password.clone().unwrap())
+            .await
     }
 }
 

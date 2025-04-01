@@ -2,7 +2,7 @@ use crate::api;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
+use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
@@ -23,6 +23,13 @@ impl Clan {
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as::<_, Clan>("select * from orange.clan")
             .fetch_all(pool)
+            .await
+    }
+
+    pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
+        query_as::<_, Self>("select * from orange.clan where id = $1")
+            .bind(id)
+            .fetch_one(pool)
             .await
     }
 

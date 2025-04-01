@@ -5,27 +5,29 @@ mod series;
 mod track;
 
 use crate::AppState;
-use axum::extract::State;
+use crate::util::un_authorization;
+use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use serde_json::Value;
-use void_log::log_info;
-use crate::util::un_authorization;
 pub use clan::Clan;
 pub use round::Round;
+use serde_json::Value;
 pub use track::Track;
+use uuid::Uuid;
+use void_log::log_info;
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/clan", get(clans).post(clan_insert))
+        .route("/clan/{id}", get(clan))
         .route("/round", post(round_insert))
         .route("/new_track", post(new_track))
 }
 
 /// # All Clan
-async fn clans(State(app_state): State<AppState>, headers: HeaderMap)-> impl IntoResponse {
+async fn clans(State(app_state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
     // ********************鉴权********************
     if un_authorization(&headers) {
         return (StatusCode::UNAUTHORIZED, Json(vec![]));
@@ -33,6 +35,22 @@ async fn clans(State(app_state): State<AppState>, headers: HeaderMap)-> impl Int
     // ********************鉴权********************
 
     let res = Clan::select_all(&app_state.pool).await.unwrap();
+    log_info!("{:?}", res);
+    (StatusCode::OK, Json(res))
+}
+
+async fn clan(
+    State(app_state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if un_authorization(&headers) {
+        return (StatusCode::UNAUTHORIZED, Json(Default::default()));
+    }
+    // ********************鉴权********************
+
+    let res = Clan::select(&app_state.pool, id).await.unwrap();
     log_info!("{:?}", res);
     (StatusCode::OK, Json(res))
 }

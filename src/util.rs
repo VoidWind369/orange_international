@@ -87,7 +87,7 @@ impl ConfigServer {
         self.port.unwrap_or(50000)
     }
 
-    pub fn get_url(&self) -> String {
+    pub fn _get_url(&self) -> String {
         self.url
             .as_ref()
             .unwrap_or(&"0.0.0.0:50000".to_string())
