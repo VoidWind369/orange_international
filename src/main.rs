@@ -5,10 +5,10 @@ use sqlx::{Pool, Postgres};
 use tower_http::cors::CorsLayer;
 use void_log::log_info;
 
+mod api;
 mod orange;
 mod system;
 mod util;
-mod api;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -28,10 +28,12 @@ pub async fn run() {
     let address = format!("{}:{}", &server.get_path(), &server.get_port());
     log_info!("启动参数: {}", &address);
 
-    let mut app = Router::new().route("/", get(|| async { "Is run time!" }));
-    app = system::router(app);
-    app = orange::router(app);
-    let app = app.with_state(app_state).layer(CorsLayer::permissive());
+    let app = Router::new()
+        .route("/", get(|| async { "Is run time!" }))
+        .nest("/system", system::router())
+        .nest("/orange", orange::router())
+        .with_state(app_state)
+        .layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind(&address).await.unwrap();
     axum::serve(listener, app).await.unwrap();

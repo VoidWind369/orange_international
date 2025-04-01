@@ -87,13 +87,14 @@ impl User {
             .await
     }
 
-    async fn verify_password(&self, password_hash: &str) -> bool {
+    async fn verify_password(&self, password: &str) -> bool {
+        log_info!("{:?}", &self);
         let argon2 = Argon2::default();
         // 验证密码
-        if let Ok(parsed_hash) = PasswordHash::new(password_hash) {
+        if let Ok(parsed_hash) = PasswordHash::new(&self.password) {
             log_info!("用户数据校验");
             let verify = argon2
-                .verify_password(&self.password.as_bytes(), &parsed_hash)
+                .verify_password(password.as_bytes(), &parsed_hash)
                 .is_ok();
             if verify {
                 let timestamp = Utc::now().timestamp();
@@ -117,7 +118,7 @@ impl User {
                 .fetch_one(conn)
                 .await
                 .unwrap_or_default();
-        self.verify_password(&data_user.password).await
+        data_user.verify_password(&self.password).await
     }
 }
 

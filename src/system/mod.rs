@@ -10,11 +10,11 @@ use crate::util::un_authorization;
 mod user;
 mod redis;
 
-pub fn router(app: Router<AppState>) -> Router<AppState> {
-    let app = app.route("/orange", get(|| async { "Is system time!" }))
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/orange", get(|| async { "Is system time!" }))
         .route("/login", post(login))
-        .route("/user_insert", post(user_insert));
-    Router::new().nest("/system", app)
+        .route("/user_insert", post(user_insert))
 }
 
 async fn login(

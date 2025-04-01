@@ -17,14 +17,13 @@ pub use clan::Clan;
 pub use round::Round;
 pub use track::Track;
 
-pub fn router(app: Router<AppState>) -> Router<AppState> {
-    let app = app
+pub fn router() -> Router<AppState> {
+    Router::new()
         .route("/clans", get(clans))
         .route("/clan_api_insert", post(clan_api_insert))
         .route("/clan_insert", post(clan_insert))
         .route("/round_insert", post(round_insert))
-        .route("/new_track", post(new_track));
-    Router::new().nest("/orange", app)
+        .route("/new_track", post(new_track))
 }
 
 /// # All Clan
