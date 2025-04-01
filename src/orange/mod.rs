@@ -19,17 +19,15 @@ pub use track::Track;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/clans", get(clans))
-        .route("/clan_api_insert", post(clan_api_insert))
-        .route("/clan_insert", post(clan_insert))
-        .route("/round_insert", post(round_insert))
+        .route("/clan", get(clans).post(clan_insert))
+        .route("/round", post(round_insert))
         .route("/new_track", post(new_track))
 }
 
 /// # All Clan
 async fn clans(State(app_state): State<AppState>, headers: HeaderMap)-> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(headers) {
+    if un_authorization(&headers) {
         return (StatusCode::UNAUTHORIZED, Json(vec![]));
     }
     // ********************鉴权********************
@@ -39,34 +37,24 @@ async fn clans(State(app_state): State<AppState>, headers: HeaderMap)-> impl Int
     (StatusCode::OK, Json(res))
 }
 
-async fn clan_api_insert(
-    State(app_state): State<AppState>,
-    headers: HeaderMap,
-    Json(data): Json<Clan>,
-) -> impl IntoResponse {
-    // ********************鉴权********************
-    if un_authorization(headers) {
-        return (StatusCode::UNAUTHORIZED, Json(-1));
-    }
-    // ********************鉴权********************
-
-    let res = data.api_insert(&app_state.pool).await;
-    let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected as i64))
-}
-
 async fn clan_insert(
     State(app_state): State<AppState>,
     headers: HeaderMap,
     Json(data): Json<Clan>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(headers) {
+    if un_authorization(&headers) {
         return (StatusCode::UNAUTHORIZED, Json(-1));
     }
     // ********************鉴权********************
 
-    let res = data.insert(&app_state.pool).await;
+    // 是否自动
+    let res = if headers.get("Auto").is_some() {
+        data.api_insert(&app_state.pool).await
+    } else {
+        data.insert(&app_state.pool).await
+    };
+
     let rows_affected = res.unwrap_or_default().rows_affected();
     (StatusCode::OK, Json(rows_affected as i64))
 }
@@ -77,7 +65,7 @@ async fn round_insert(
     Json(data): Json<Value>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(headers) {
+    if un_authorization(&headers) {
         return (StatusCode::UNAUTHORIZED, Json(-1));
     }
     // ********************鉴权********************
@@ -115,7 +103,7 @@ async fn new_track(
     Json(data): Json<Value>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(headers) {
+    if un_authorization(&headers) {
         return (StatusCode::UNAUTHORIZED, Json(0));
     }
     // ********************鉴权********************

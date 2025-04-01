@@ -1,20 +1,20 @@
-use crate::system::user::User;
 use crate::AppState;
+use crate::system::user::User;
+use crate::util::un_authorization;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use crate::util::un_authorization;
+use void_log::log_info;
 
-mod user;
 mod redis;
+mod user;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/orange", get(|| async { "Is system time!" }))
         .route("/login", post(login))
-        .route("/user_insert", post(user_insert))
+        .route("/user", get(users).post(user_insert).put(user_update).delete(user_delete))
 }
 
 async fn login(
@@ -23,17 +23,26 @@ async fn login(
     Json(data): Json<User>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(headers) {
+    if un_authorization(&headers) {
         return (StatusCode::UNAUTHORIZED, Json(false));
     }
     // ********************鉴权********************
 
     let pool = app_state.pool;
     let password = data.verify_login(&pool).await;
-    if password {
-
-    }
+    if password {}
     (StatusCode::OK, Json(password))
+}
+
+async fn users(State(app_state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+    // ********************鉴权********************
+    if un_authorization(&headers) {
+        return (StatusCode::UNAUTHORIZED, Json(vec![]));
+    }
+    // ********************鉴权********************
+    let res = User::select_all(&app_state.pool).await.unwrap();
+    log_info!("{:?}", res);
+    (StatusCode::OK, Json(res))
 }
 
 async fn user_insert(
@@ -42,12 +51,38 @@ async fn user_insert(
     Json(data): Json<User>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(headers) {
+    if un_authorization(&headers) {
         return (StatusCode::UNAUTHORIZED, Json(0));
     }
     // ********************鉴权********************
 
     let res = data.insert(&app_state.pool).await;
+    let rows_affected = res.unwrap_or_default().rows_affected();
+    (StatusCode::OK, Json(rows_affected))
+}
+
+async fn user_update(State(app_state): State<AppState>,
+                     headers: HeaderMap,
+                     Json(data): Json<User>) -> impl IntoResponse {
+    // ********************鉴权********************
+    if un_authorization(&headers) {
+        return (StatusCode::UNAUTHORIZED, Json(0));
+    }
+    // ********************鉴权********************
+
+    let res = data.update(&app_state.pool).await;
+    let rows_affected = res.unwrap_or_default().rows_affected();
+    (StatusCode::OK, Json(rows_affected))
+}
+
+async fn user_delete(State(app_state): State<AppState>,headers: HeaderMap, Json(data): Json<User>) -> impl IntoResponse {
+    // ********************鉴权********************
+    if un_authorization(&headers) {
+        return (StatusCode::UNAUTHORIZED, Json(0));
+    }
+    // ********************鉴权********************
+
+    let res = data.delete(&app_state.pool).await;
     let rows_affected = res.unwrap_or_default().rows_affected();
     (StatusCode::OK, Json(rows_affected))
 }

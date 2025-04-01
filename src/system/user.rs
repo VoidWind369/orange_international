@@ -22,7 +22,7 @@ pub struct User {
     create_time: DateTime<Utc>,
     #[serde(skip_deserializing)]
     update_time: DateTime<Utc>,
-    password: String,
+    password: Option<String>,
 }
 
 impl User {
@@ -31,20 +31,28 @@ impl User {
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
         argon2
-            .hash_password(&self.password.as_bytes(), &salt)
+            .hash_password(&self.password.clone().unwrap().as_bytes(), &salt)
             .unwrap()
             .to_string()
     }
-    pub async fn select(conn: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as::<_, User>("select * from public.\"user\"")
-            .fetch_all(conn)
+
+    pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
+        query_as::<_, User>("select * from public.user")
+            .fetch_all(pool)
             .await
     }
 
-    pub async fn insert(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<User, Error> {
+        query_as::<_, User>("select * from public.user where id = $1")
+            .bind(id)
+            .fetch_one(pool)
+            .await
+    }
+
+    pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         let password = self.get_password_hash();
-        query("insert into public.\"user\" values(DEFAULT, $1, $2, $3, $4, $5, $6, $6, $7)")
+        query("insert into public.user values(DEFAULT, $1, $2, $3, $4, $5, $6, $6, $7)")
             .bind(&self.name)
             .bind(&self.email)
             .bind(&self.status)
@@ -52,11 +60,11 @@ impl User {
             .bind(&self.phone)
             .bind(now)
             .bind(password)
-            .execute(conn)
+            .execute(pool)
             .await
     }
 
-    pub async fn update(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn update(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("update public.user set name = $1, email = $2, status = $3, phone = $4, updated_time = $5, where id = $6")
             .bind(&self.name)
@@ -65,25 +73,25 @@ impl User {
             .bind(&self.phone)
             .bind(now)
             .bind(&self.id)
-            .execute(conn)
+            .execute(pool)
             .await
     }
 
-    pub async fn update_password(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn update_password(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         let password = self.get_password_hash();
         query("update public.user set password = $1, set update_time = $2 where id = $3")
             .bind(password)
             .bind(now)
             .bind(&self.id)
-            .execute(conn)
+            .execute(pool)
             .await
     }
 
-    pub async fn delete(id: Uuid, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn delete(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         query("delete from public.user where id = $1")
-            .bind(id)
-            .execute(conn)
+            .bind(&self.id)
+            .execute(pool)
             .await
     }
 
@@ -91,7 +99,7 @@ impl User {
         log_info!("{:?}", &self);
         let argon2 = Argon2::default();
         // 验证密码
-        if let Ok(parsed_hash) = PasswordHash::new(&self.password) {
+        if let Ok(parsed_hash) = PasswordHash::new(&self.password.clone().unwrap()) {
             log_info!("用户数据校验");
             let verify = argon2
                 .verify_password(password.as_bytes(), &parsed_hash)
@@ -111,14 +119,14 @@ impl User {
         }
     }
 
-    pub async fn verify_login(&self, conn: &Pool<Postgres>) -> bool {
+    pub async fn verify_login(&self, pool: &Pool<Postgres>) -> bool {
         let data_user =
             query_as::<_, User>("select * from public.\"user\" where email = $1 or code = $1")
                 .bind(&self.email)
-                .fetch_one(conn)
+                .fetch_one(pool)
                 .await
                 .unwrap_or_default();
-        data_user.verify_password(&self.password).await
+        data_user.verify_password(&self.password.clone().unwrap()).await
     }
 }
 
@@ -132,7 +140,7 @@ async fn test() {
         status: Some(1),
         code: Option::from("admin1".to_string()),
         phone: Option::from("".to_string()),
-        password: "123456".to_string(),
+        password: Option::from("123456".to_string()),
         ..Default::default()
     };
     let a = user.insert(&pool).await.unwrap();
@@ -143,7 +151,7 @@ async fn test() {
 async fn test2() {
     let config = Config::get().await;
     let pool = config.get_database().get().await;
-    let users = User::select(&pool).await.unwrap();
+    let users = User::select_all(&pool).await.unwrap();
     log_info!("{:?}", users);
     for user in users {
         let a = user.create_time.with_timezone(&Local);
@@ -158,7 +166,7 @@ async fn test3() {
     let pool = config.get_database().get().await;
     let users = User {
         email: Option::from("mzx1@orgvoid.top".to_string()),
-        password: "123456".to_string(),
+        password: Option::from("123456".to_string()),
         ..Default::default()
     };
     let a = users.verify_login(&pool).await;

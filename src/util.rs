@@ -121,7 +121,7 @@ impl ConfigDatabase {
     }
 }
 
-pub fn un_authorization(headers: HeaderMap) -> bool {
+pub fn un_authorization(headers: &HeaderMap) -> bool {
     if let Some(authorization) = headers.get(AUTHORIZATION) {
         if authorization.to_str().unwrap_or_default().eq("123456") {
             false
