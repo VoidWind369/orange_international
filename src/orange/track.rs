@@ -1,10 +1,10 @@
-use crate::orange::clan_point::ClanPoint;
 use crate::orange::Round;
+use crate::orange::clan_point::ClanPoint;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{query, query_as, Error, FromRow, Pool, Postgres, Type};
+use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
 use uuid::Uuid;
 use void_log::log_info;
 
@@ -37,30 +37,24 @@ impl Track {
         rival_clan_point: ClanPoint,
         pool: &Pool<Postgres>,
     ) -> Self {
-        let mut track = Self::default();
         let round = Round::select_last(pool).await.unwrap_or_default();
-        track.round_id = round.get_id();
-        track.self_clan_id = self_clan_point.clan_id;
-        track.rival_clan_id = rival_clan_point.clan_id;
-        track.create_time = Utc::now();
-        track.self_now_point = self_clan_point.point;
-        track.rival_now_point = rival_clan_point.point;
+        let mut track = Self {
+            self_clan_id: self_clan_point.clan_id,
+            rival_clan_id: rival_clan_point.clan_id,
+            self_history_point: self_clan_point.point,
+            rival_history_point: rival_clan_point.point,
+            create_time: Utc::now(),
+            round_id: round.get_id(),
+            ..Default::default()
+        };
 
-        // self < rival
         if track.self_now_point < track.rival_now_point {
-            track.self_history_point += 1;
-            track.rival_history_point -= 1;
-            track.result = TrackResult::Win;
-        }
-
-        // self > rival
-        if track.self_now_point > track.rival_now_point {
-            track.self_history_point -= 1;
-            track.rival_history_point += 1;
-            track.result = TrackResult::Lose;
-        }
-
-        if track.self_now_point == track.rival_now_point {
+            // self < rival
+            track.win()
+        } else if track.self_now_point > track.rival_now_point {
+            // self > rival
+            track.lose()
+        } else {
             // Check 10 history
             let self_tracks = Track::select_desc_limit(track.self_clan_id, 10, pool)
                 .await
@@ -72,12 +66,24 @@ impl Track {
 
             if res10 == TrackResult::None {
                 log_info!("{}:{} 拼手速", track.self_clan_id, track.rival_clan_id);
-                track.result = TrackResult::Win;
+                track.win();
             } else {
                 track.result = res10;
             }
         }
         track
+    }
+
+    fn win(&mut self) {
+        self.self_now_point = self.self_history_point + 1;
+        self.rival_now_point = self.rival_history_point - 1;
+        self.result = TrackResult::Win;
+    }
+
+    fn lose(&mut self) {
+        self.self_now_point = self.self_history_point - 1;
+        self.rival_now_point = self.rival_history_point + 1;
+        self.result = TrackResult::Lose;
     }
 
     pub async fn select_desc_limit(

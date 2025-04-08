@@ -146,7 +146,7 @@ impl Clan {
             .header(AUTHORIZATION, token).send().await;
         match response {
             Ok(re) => {
-                let data = re.json::<Clan>().await.unwrap_or_default();
+                let data = re.json().await.unwrap_or_default();
                 log_info!("{:?}", data);
                 data
             }
