@@ -9,6 +9,7 @@ mod api;
 mod orange;
 mod system;
 mod util;
+mod login;
 
 #[derive(Clone)]
 pub struct AppState {

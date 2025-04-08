@@ -1,9 +1,12 @@
 use crate::api;
+use crate::system::User;
+use crate::util::Config;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
 use uuid::Uuid;
+use void_log::log_info;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct Clan {
@@ -21,13 +24,11 @@ pub struct Clan {
 
 impl Clan {
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as::<_, Clan>("select * from orange.clan")
-            .fetch_all(pool)
-            .await
+        query_as("select * from orange.clan").fetch_all(pool).await
     }
 
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
-        query_as::<_, Self>("select * from orange.clan where id = $1")
+        query_as("select * from orange.clan where id = $1")
             .bind(id)
             .fetch_one(pool)
             .await
@@ -38,11 +39,16 @@ impl Clan {
         is_intel: bool,
         pool: &Pool<Postgres>,
     ) -> Result<Self, Error> {
-        query_as::<_, Clan>("select * from orange.clan where tag = $1 and is_intel = $2")
+        query_as("select * from orange.clan where tag = $1 and is_intel = $2")
             .bind(tag)
             .bind(is_intel)
             .fetch_one(pool)
             .await
+    }
+
+    pub async fn clan_users(&self, pool: &Pool<Postgres>) -> Result<Vec<User>, Error> {
+        query_as("select * from public.user u, orange.clan_user cu where u.id = cu.user_id  and cu.clan_id = $1")
+            .bind(&self.id).fetch_all(pool).await
     }
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
@@ -85,6 +91,28 @@ impl Clan {
     }
 }
 
+// 关联User
+impl User {
+    ///
+    ///
+    /// # Clan Users
+    ///
+    /// * `pool`:
+    ///
+    /// returns: Result<Vec<Clan, Global>, Error>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///
+    /// ```
+    pub async fn user_clans(&self, pool: &Pool<Postgres>) -> Result<Vec<Clan>, Error> {
+        log_info!("{:?}", &self.id);
+        query_as("select c.* from orange.clan c, orange.clan_user cu where c.id = cu.clan_id and cu.user_id = $1")
+            .bind(&self.id).fetch_all(pool).await
+    }
+}
+
 impl api::Clan {
     pub fn api_to_orange(&self) -> Clan {
         Clan {
@@ -94,4 +122,12 @@ impl api::Clan {
             ..Default::default()
         }
     }
+}
+
+#[tokio::test]
+async fn test() {
+    let pool = Config::get().await.get_database().get().await;
+    let a = query_as::<_,Clan>("select c.* from orange.clan c, orange.clan_user cu where c.id = cu.clan_id and cu.user_id = $1")
+        .bind(Uuid::parse_str("a036b14c-9f83-4369-9086-3a82c0c8f05e").unwrap()).fetch_all(&pool).await.unwrap();
+    log_info!("{a:?}")
 }

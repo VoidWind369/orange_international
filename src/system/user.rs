@@ -1,3 +1,5 @@
+use crate::orange::Clan;
+use crate::system::Group;
 use crate::system::redis::UserInfo;
 use crate::util::Config;
 use argon2::password_hash::SaltString;
@@ -8,16 +10,16 @@ use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
 use uuid::Uuid;
-use void_log::{log_error, log_info};
+use void_log::{log_error, log_info, log_warn};
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct User {
-    id: Option<Uuid>,
-    name: Option<String>,
-    email: Option<String>,
-    status: Option<i16>,
-    code: Option<String>,
-    phone: Option<String>,
+    pub id: Option<Uuid>,
+    pub name: Option<String>,
+    pub email: Option<String>,
+    pub status: Option<i16>,
+    pub code: Option<String>,
+    pub phone: Option<String>,
     #[serde(skip_deserializing)]
     create_time: DateTime<Utc>,
     #[serde(skip_deserializing)]
@@ -37,13 +39,11 @@ impl User {
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as::<_, User>("select * from public.user")
-            .fetch_all(pool)
-            .await
+        query_as("select * from public.user").fetch_all(pool).await
     }
 
-    pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<User, Error> {
-        query_as::<_, User>("select * from public.user where id = $1")
+    pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
+        query_as("select * from public.user where id = $1")
             .bind(id)
             .fetch_one(pool)
             .await
@@ -95,39 +95,50 @@ impl User {
             .await
     }
 
-    async fn verify_password(&self, password: &str) -> bool {
-        log_info!("{:?}", &self);
+    async fn verify_password(
+        &self,
+        password: &str,
+        clans: Vec<Clan>,
+        groups: Vec<Group>,
+    ) -> Option<UserInfo> {
         let argon2 = Argon2::default();
         // 验证密码
         if let Ok(parsed_hash) = PasswordHash::new(&self.password.clone().unwrap()) {
             log_info!("用户数据校验");
-            let verify = argon2
-                .verify_password(password.as_bytes(), &parsed_hash)
-                .is_ok();
-            if verify {
+            if let Err(e) = argon2.verify_password(password.as_bytes(), &parsed_hash) {
+                log_warn!("Login failed: {e}");
+                None
+            } else {
                 let timestamp = Utc::now().timestamp();
                 let id = &self.id.unwrap();
                 let code = &self.code.clone().unwrap();
 
                 let token = format!("{}{}{}", timestamp, id, code);
-                UserInfo::new(id.clone(), token).set_user(3600).await
-            };
-            verify
+
+                let user_info = UserInfo::new(self.clone(), token, clans, groups);
+                user_info.set_user(3600).await;
+                Some(user_info)
+            }
         } else {
             log_error!("数据库密码存储错误");
-            false
+            None
         }
     }
 
-    pub async fn verify_login(&self, pool: &Pool<Postgres>) -> bool {
+    pub async fn verify_login(&self, pool: &Pool<Postgres>) -> Option<UserInfo> {
         let data_user =
-            query_as::<_, User>("select * from public.\"user\" where email = $1 or code = $1")
+            query_as::<_, User>("select * from public.user where email = $1 or code = $1")
                 .bind(&self.email)
                 .fetch_one(pool)
                 .await
                 .unwrap_or_default();
+        log_info!("{:?}", &data_user);
+        let user_clans = data_user.user_clans(pool).await.unwrap();
+        let user_groups = data_user.user_groups(pool).await.unwrap();
+        log_info!("{:?}", &user_clans);
+        log_info!("{:?}", &user_groups);
         data_user
-            .verify_password(&self.password.clone().unwrap())
+            .verify_password(&self.password.clone().unwrap(), user_clans, user_groups)
             .await
     }
 }

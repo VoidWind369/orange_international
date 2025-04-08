@@ -1,16 +1,20 @@
 use crate::AppState;
-use crate::system::user::User;
-use crate::util::un_authorization;
+use crate::util::{bearer, un_authorization};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use axum_auth::AuthBearer;
 use uuid::Uuid;
 use void_log::log_info;
 
 mod redis;
 mod user;
+mod group;
+
+pub use user::User;
+pub use group::Group;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -21,19 +25,22 @@ pub fn router() -> Router<AppState> {
 
 async fn login(
     State(app_state): State<AppState>,
-    headers: HeaderMap,
+    AuthBearer(token): AuthBearer,
     Json(data): Json<User>,
 ) -> impl IntoResponse {
+    log_info!("{}", &token);
     // ********************鉴权********************
-    if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(false));
+    if !token.eq("cfa*login*auth") {
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
     let pool = app_state.pool;
-    let password = data.verify_login(&pool).await;
-    if password {}
-    (StatusCode::OK, Json(password))
+    if let Some(check) = data.verify_login(&pool).await {
+        (StatusCode::OK, Json(check))
+    } else {
+        (StatusCode::UNAUTHORIZED, Json::default())
+    }
 }
 
 async fn users(State(app_state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
@@ -55,7 +62,7 @@ async fn user(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(Default::default()));
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
@@ -71,7 +78,7 @@ async fn user_insert(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(0));
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
@@ -87,7 +94,7 @@ async fn user_update(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(0));
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
@@ -103,7 +110,7 @@ async fn user_delete(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(0));
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 

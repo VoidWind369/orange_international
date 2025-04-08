@@ -1,5 +1,5 @@
-use axum::http::header::AUTHORIZATION;
 use axum::http::HeaderMap;
+use axum::http::header::AUTHORIZATION;
 use r2d2::PooledConnection;
 use redis::Client;
 use serde::{Deserialize, Serialize};
@@ -131,6 +131,10 @@ pub fn un_authorization(headers: &HeaderMap) -> bool {
     } else {
         true
     }
+}
+
+pub fn bearer(token: &str) -> bool {
+    token.eq("123456")
 }
 
 pub struct ApiResponse<D>

@@ -1,3 +1,5 @@
+use crate::orange::Clan;
+use crate::system::{Group, User};
 use crate::util::Config;
 use redis::Commands;
 use serde::{Deserialize, Serialize};
@@ -8,12 +10,25 @@ use void_log::log_info;
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct UserInfo {
     id: Uuid,
+    code: String,
+    email: String,
+    name: String,
     token: String,
+    group: Vec<Group>,
+    clans: Vec<Clan>,
 }
 
 impl UserInfo {
-    pub fn new(id: Uuid, token: String) -> Self {
-        Self { id, token }
+    pub fn new(user: User, token: String, clans: Vec<Clan>, group: Vec<Group>) -> Self {
+        Self {
+            id: user.id.unwrap(),
+            code: user.code.unwrap(),
+            email: user.email.unwrap(),
+            name: user.name.unwrap_or_default(),
+            token,
+            group,
+            clans,
+        }
     }
 
     pub fn get_token(&self) -> String {
@@ -39,13 +54,20 @@ impl UserInfo {
 async fn test_set_user() {
     let u = UserInfo {
         id: Uuid::from_str("a036b14c-9f83-4369-9086-3a82c0c8f05e").unwrap(),
+        code: "".to_string(),
+        email: "".to_string(),
+        name: "".to_string(),
         token: "qwertyuiol;lkjhgfd".to_string(),
+        group: vec![],
+        clans: vec![],
     };
     u.set_user(3600).await;
 }
 
 #[tokio::test]
 async fn test_get_user() {
-    let a = UserInfo::get_user("test").await.expect("TODO: panic message");
+    let a = UserInfo::get_user("test")
+        .await
+        .expect("TODO: panic message");
     log_info!("{a:?}")
 }
