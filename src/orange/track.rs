@@ -11,13 +11,13 @@ use void_log::log_info;
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct Track {
     id: Uuid,
-    self_clan_id: Uuid,
-    rival_clan_id: Uuid,
+    pub self_clan_id: Uuid,
+    pub rival_clan_id: Uuid,
     self_history_point: i64,
     rival_history_point: i64,
     create_time: DateTime<Utc>,
-    self_now_point: i64,
-    rival_now_point: i64,
+    pub self_now_point: i64,
+    pub rival_now_point: i64,
     round_id: Uuid,
     result: TrackResult,
 }
@@ -62,14 +62,15 @@ impl Track {
             let rival_tracks = Track::select_desc_limit(track.rival_clan_id, 10, pool)
                 .await
                 .unwrap_or_default();
-            let res10 = check_history(self_tracks, rival_tracks);
 
-            if res10 == TrackResult::None {
-                log_info!("{}:{} 拼手速", track.self_clan_id, track.rival_clan_id);
-                track.win();
-            } else {
-                track.result = res10;
-            }
+            match check_history(self_tracks, rival_tracks) {
+                TrackResult::Win => track.win(),
+                TrackResult::None => {
+                    log_info!("{}:{} 拼手速", track.self_clan_id, track.rival_clan_id);
+                    track.win();
+                }
+                TrackResult::Lose => track.lose(),
+            };
         }
         track
     }
@@ -84,6 +85,10 @@ impl Track {
         self.self_now_point = self.self_history_point - 1;
         self.rival_now_point = self.rival_history_point + 1;
         self.result = TrackResult::Lose;
+    }
+
+    pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
+        query_as("select * from orange.track").fetch_all(pool).await
     }
 
     pub async fn select_desc_limit(

@@ -1,9 +1,9 @@
+use crate::orange::Clan;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
 use uuid::Uuid;
-use crate::orange::Clan;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct ClanPoint {
@@ -15,6 +15,22 @@ pub struct ClanPoint {
 }
 
 impl ClanPoint {
+    pub fn new(clan_id: Uuid, point: i64) -> Self {
+        Self {
+            clan_id,
+            point,
+            status: Some(1),
+            ..Default::default()
+        }
+    }
+
+    pub async fn select(&self, pool: &Pool<Postgres>) -> Result<Self, Error> {
+        query_as("select * from orange.clan_point where clan_id = $1")
+            .bind(self.clan_id)
+            .fetch_one(pool)
+            .await
+    }
+
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("insert into orange.clan_point values($1, $2, $3, $4)")
@@ -35,11 +51,21 @@ impl ClanPoint {
             .execute(pool)
             .await
     }
+
+    pub async fn insert_or_update(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        if let Err(_) = self.select(pool).await {
+            self.insert(pool).await
+        } else {
+            self.update_point(pool).await
+        }
+    }
 }
 
 impl Clan {
     pub async fn point_select(&self, pool: &Pool<Postgres>) -> Result<ClanPoint, Error> {
-        query_as::<_,ClanPoint>("select * from clan_point where clan_id = $1")
-            .bind(&self.id).fetch_one(pool).await
+        query_as::<_, ClanPoint>("select * from clan_point where clan_id = $1")
+            .bind(&self.id)
+            .fetch_one(pool)
+            .await
     }
 }

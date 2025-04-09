@@ -18,6 +18,11 @@ impl Round {
     pub fn get_id(&self) -> Uuid {
         self.id
     }
+
+    pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
+        query_as("select * from orange.round").fetch_all(pool).await
+    }
+
     pub async fn select_last(pool: &Pool<Postgres>) -> Result<Self, Error> {
         query_as::<_, Self>("select * from orange.clan order by create_time desc limit 1")
             .fetch_one(pool)
@@ -25,7 +30,13 @@ impl Round {
     }
 
     pub async fn insert(time_str: &str, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        let ndt = NaiveDateTime::parse_from_str(time_str, "%Y-%m-%d %H:%M:%S").unwrap();
+        let ndt = if let Ok(naive_date_time) =
+            NaiveDateTime::parse_from_str(time_str, "%Y-%m-%dT%H:%M:%S")
+        {
+            naive_date_time
+        } else {
+            NaiveDateTime::parse_from_str(time_str, "%Y-%m-%dT%H:%M").unwrap()
+        };
         let local_time = Local.from_local_datetime(&ndt).single().unwrap();
         let utc_time = local_time.with_timezone(&Utc);
         let code = utc_time.format("INTEL%Y%m%d").to_string();

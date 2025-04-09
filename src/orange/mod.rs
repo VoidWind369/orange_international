@@ -5,12 +5,14 @@ mod series;
 mod track;
 
 use crate::AppState;
+use crate::orange::clan_point::ClanPoint;
 use crate::util::un_authorization;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use axum_auth::AuthBearer;
 pub use clan::Clan;
 pub use round::Round;
 use serde_json::Value;
@@ -22,8 +24,8 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/clan", get(clans).post(clan_insert))
         .route("/clan/{id}", get(clan))
-        .route("/round", post(round_insert))
-        .route("/new_track", post(new_track))
+        .route("/round", get(rounds).post(round_insert))
+        .route("/track", get(tracks).post(new_track))
 }
 
 /// # All Clan
@@ -77,14 +79,28 @@ async fn clan_insert(
     (StatusCode::OK, Json(rows_affected as i64))
 }
 
+async fn rounds(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*login*auth") {
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    let res = Round::select_all(&app_state.pool).await.unwrap();
+    (StatusCode::OK, Json(res))
+}
+
 async fn round_insert(
     State(app_state): State<AppState>,
-    headers: HeaderMap,
+    AuthBearer(token): AuthBearer,
     Json(data): Json<Value>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(-1));
+    if !token.eq("cfa*login*auth") {
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
@@ -95,6 +111,20 @@ async fn round_insert(
     } else {
         (StatusCode::INTERNAL_SERVER_ERROR, Json(-2))
     }
+}
+
+async fn tracks(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*login*auth") {
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    let res = Track::select_all(&app_state.pool).await.unwrap();
+    (StatusCode::OK, Json(res))
 }
 
 ///
@@ -117,12 +147,12 @@ async fn round_insert(
 /// ```
 async fn new_track(
     State(app_state): State<AppState>,
-    headers: HeaderMap,
+    AuthBearer(token): AuthBearer,
     Json(data): Json<Value>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(0));
+    if !token.eq("cfa*login*auth") {
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
@@ -153,7 +183,19 @@ async fn new_track(
         .unwrap_or_default();
 
     let track = Track::new(self_point, rival_point, &app_state.pool).await;
+    let self_point = ClanPoint::new(track.self_clan_id, track.self_now_point)
+        .insert_or_update(&app_state.pool)
+        .await;
+    let rival_point = ClanPoint::new(track.rival_clan_id, track.rival_now_point)
+        .insert_or_update(&app_state.pool)
+        .await;
     let res = track.insert(&app_state.pool).await;
     let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected as i64))
+
+    log_info!(
+        "self: {} | rival: {} | track: {rows_affected}",
+        self_point.unwrap().rows_affected(),
+        rival_point.unwrap().rows_affected()
+    );
+    (StatusCode::OK, Json(track))
 }
