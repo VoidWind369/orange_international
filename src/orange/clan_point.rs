@@ -33,7 +33,7 @@ impl ClanPoint {
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
-        query("insert into orange.clan_point values($1, $2, $3, $4)")
+        query("insert into orange.clan_point values($1, $2, $3, $3, $4)")
             .bind(&self.clan_id)
             .bind(&self.point)
             .bind(now)
