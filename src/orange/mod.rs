@@ -172,30 +172,36 @@ async fn new_track(
         .await
         .unwrap_or_default();
 
+    log_info!("Self {:?}", &self_clan);
+    log_info!("Rival {:?}", &rival_clan);
+
     // Search Point
-    let self_point = self_clan
+    let mut self_point = self_clan
         .point_select(&app_state.pool)
         .await
         .unwrap_or_default();
-    let rival_point = rival_clan
+    self_point.clan_id = self_clan.id.unwrap_or_default();
+
+    let mut rival_point = rival_clan
         .point_select(&app_state.pool)
         .await
         .unwrap_or_default();
+    rival_point.clan_id = rival_clan.id.unwrap_or_default();
 
     let track = Track::new(self_point, rival_point, &app_state.pool).await;
     let self_point = ClanPoint::new(track.self_clan_id, track.self_now_point)
         .insert_or_update(&app_state.pool)
-        .await;
+        .await.unwrap();
     let rival_point = ClanPoint::new(track.rival_clan_id, track.rival_now_point)
         .insert_or_update(&app_state.pool)
-        .await;
+        .await.unwrap();
     let res = track.insert(&app_state.pool).await;
     let rows_affected = res.unwrap_or_default().rows_affected();
 
     log_info!(
         "self: {} | rival: {} | track: {rows_affected}",
-        self_point.unwrap().rows_affected(),
-        rival_point.unwrap().rows_affected()
+        self_point.rows_affected(),
+        rival_point.rows_affected()
     );
     (StatusCode::OK, Json(track))
 }

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
 use uuid::Uuid;
+use void_log::log_warn;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct ClanPoint {
@@ -53,7 +54,8 @@ impl ClanPoint {
     }
 
     pub async fn insert_or_update(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        if let Err(_) = self.select(pool).await {
+        if let Err(e) = self.select(pool).await {
+            log_warn!("Select Null {e}");
             self.insert(pool).await
         } else {
             self.update_point(pool).await

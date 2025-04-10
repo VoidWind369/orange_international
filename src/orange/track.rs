@@ -48,6 +48,12 @@ impl Track {
             ..Default::default()
         };
 
+        // Track Failed
+        if track.self_clan_id == Uuid::default() || track.rival_clan_id == Uuid::default() {
+            track.result = TrackResult::None;
+            return track;
+        }
+
         if track.self_now_point < track.rival_now_point {
             // self < rival
             track.win()
@@ -62,17 +68,20 @@ impl Track {
             let rival_tracks = Track::select_desc_limit(track.rival_clan_id, 10, pool)
                 .await
                 .unwrap_or_default();
-
-            match check_history(self_tracks, rival_tracks) {
-                TrackResult::Win => track.win(),
-                TrackResult::None => {
-                    log_info!("{}:{} 拼手速", track.self_clan_id, track.rival_clan_id);
-                    track.win();
-                }
-                TrackResult::Lose => track.lose(),
-            };
+            track.check_history(self_tracks, rival_tracks);
         }
         track
+    }
+
+    /// # History Win Check
+    fn check_history(&mut self, self_track: Vec<Track>, rival_track: Vec<Track>) {
+        let self_win = count_win(self_track);
+        let rival_win = count_win(rival_track);
+        if self_win <= rival_win {
+            self.win();
+        } else {
+            self.lose();
+        }
     }
 
     fn win(&mut self) {
@@ -116,19 +125,6 @@ impl Track {
             .bind(&self.round_id)
             .execute(pool)
             .await
-    }
-}
-
-/// # History Win Check
-fn check_history(self_track: Vec<Track>, rival_track: Vec<Track>) -> TrackResult {
-    let self_win = count_win(self_track);
-    let rival_win = count_win(rival_track);
-    if self_win < rival_win {
-        TrackResult::Win
-    } else if self_win > rival_win {
-        TrackResult::Lose
-    } else {
-        TrackResult::None
     }
 }
 
