@@ -188,18 +188,27 @@ async fn new_track(
         .unwrap_or_default();
     rival_point.clan_id = rival_clan.id.unwrap_or_default();
 
+    // 先添加Track
     let track = Track::new(self_point, rival_point, &app_state.pool).await;
+    let track_res = if let Ok(qr) = track.insert(&app_state.pool).await {
+        // 数据库Unique限制重复
+        qr.rows_affected()
+    } else {
+        return (StatusCode::OK, Json(track))
+    };
+
+    // 更新self
     let self_point = ClanPoint::new(track.self_clan_id, track.self_now_point)
         .insert_or_update(&app_state.pool)
         .await.unwrap();
+
+    // 更新rival
     let rival_point = ClanPoint::new(track.rival_clan_id, track.rival_now_point)
         .insert_or_update(&app_state.pool)
         .await.unwrap();
-    let res = track.insert(&app_state.pool).await;
-    let rows_affected = res.unwrap_or_default().rows_affected();
 
     log_info!(
-        "self: {} | rival: {} | track: {rows_affected}",
+        "self: {} | rival: {} | track: {track_res}",
         self_point.rows_affected(),
         rival_point.rows_affected()
     );

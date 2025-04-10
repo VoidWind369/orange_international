@@ -24,7 +24,7 @@ impl Round {
     }
 
     pub async fn select_last(pool: &Pool<Postgres>) -> Result<Self, Error> {
-        query_as::<_, Self>("select * from orange.clan order by create_time desc limit 1")
+        query_as::<_, Self>("select * from orange.round order by create_time desc limit 1")
             .fetch_one(pool)
             .await
     }

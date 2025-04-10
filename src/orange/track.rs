@@ -123,6 +123,7 @@ impl Track {
             .bind(&self.self_now_point)
             .bind(&self.rival_now_point)
             .bind(&self.round_id)
+            .bind(&self.result)
             .execute(pool)
             .await
     }
