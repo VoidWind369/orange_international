@@ -194,7 +194,7 @@ async fn new_track(
         // 数据库Unique限制重复
         qr.rows_affected()
     } else {
-        return (StatusCode::OK, Json(track))
+        return (StatusCode::FORBIDDEN, Json(track))
     };
 
     // 更新self
