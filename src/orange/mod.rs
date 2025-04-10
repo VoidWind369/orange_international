@@ -4,13 +4,13 @@ mod round;
 mod series;
 mod track;
 
-use crate::AppState;
 use crate::orange::clan_point::ClanPoint;
 use crate::util::un_authorization;
+use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
+use axum::routing::get;
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 pub use clan::Clan;

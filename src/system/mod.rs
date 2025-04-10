@@ -1,5 +1,5 @@
+use crate::util::un_authorization;
 use crate::AppState;
-use crate::util::{bearer, un_authorization};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -13,8 +13,8 @@ mod redis;
 mod user;
 mod group;
 
-pub use user::User;
 pub use group::Group;
+pub use user::User;
 
 pub fn router() -> Router<AppState> {
     Router::new()
