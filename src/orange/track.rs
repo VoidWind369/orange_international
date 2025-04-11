@@ -20,6 +20,10 @@ pub struct Track {
     pub rival_now_point: i64,
     round_id: Uuid,
     result: TrackResult,
+    self_tag: Option<String>,
+    self_name: Option<String>,
+    rival_tag: Option<String>,
+    rival_name: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Type, Serialize_repr, Deserialize_repr)]
@@ -97,7 +101,7 @@ impl Track {
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as("select * from orange.track").fetch_all(pool).await
+        query_as("select ot.*, c1.tag self_tag, c1.\"name\" self_name, c2.tag rival_tag, c2.\"name\" rival_name from orange.track ot, orange.clan c1, orange.clan c2 where ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id").fetch_all(pool).await
     }
 
     pub async fn select_desc_limit(
