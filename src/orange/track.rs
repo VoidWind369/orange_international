@@ -105,7 +105,7 @@ impl Track {
         limit: i64,
         pool: &Pool<Postgres>,
     ) -> Result<Vec<Self>, Error> {
-        query_as::<_, Self>("select * from orange.track where self_clan_id = $1 or rival_clan_id = $1 desc limit $2")
+        query_as::<_, Self>("select * from orange.track where self_clan_id = $1 or rival_clan_id = $1 order by create_time desc limit $2")
             .bind(clan_id)
             .bind(limit)
             .fetch_all(pool)

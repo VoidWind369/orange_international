@@ -4,13 +4,13 @@ mod round;
 mod series;
 mod track;
 
+use crate::AppState;
 use crate::orange::clan_point::ClanPoint;
 use crate::util::un_authorization;
-use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 pub use clan::Clan;
@@ -18,7 +18,7 @@ pub use round::Round;
 use serde_json::Value;
 pub use track::Track;
 use uuid::Uuid;
-use void_log::log_info;
+use void_log::{log_info, log_warn};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -190,10 +190,20 @@ async fn new_track(
 
     // 先添加Track
     let track = Track::new(self_point, rival_point, &app_state.pool).await;
+    let check_self_tracks = Track::select_desc_limit(track.self_clan_id, 1, &app_state.pool).await.unwrap();
+    let check_rival_tracks = Track::select_desc_limit(track.rival_clan_id, 1, &app_state.pool).await.unwrap();
+
+    // 预查限制重复登记
+    if !check_self_tracks.is_empty() || !check_rival_tracks.is_empty() {
+        log_warn!("预查重复登记");
+        return (StatusCode::FORBIDDEN, Json(track))
+    }
+
+    // 数据库Unique限制重复
     let track_res = if let Ok(qr) = track.insert(&app_state.pool).await {
-        // 数据库Unique限制重复
         qr.rows_affected()
     } else {
+        log_warn!("数据库Unique重复");
         return (StatusCode::FORBIDDEN, Json(track))
     };
 
