@@ -1,6 +1,6 @@
 use crate::orange::Clan;
 use crate::system::Group;
-use crate::system::redis::UserInfo;
+use crate::system::UserInfo;
 use crate::util::Config;
 use argon2::password_hash::SaltString;
 use argon2::password_hash::rand_core::OsRng;
@@ -115,6 +115,7 @@ impl User {
 
                 let token = format!("{}{}{}", timestamp, id, code);
 
+                // 存Redis
                 let user_info = UserInfo::new(self.clone(), token, clans, groups);
                 user_info.set_user(3600).await;
                 Some(user_info)

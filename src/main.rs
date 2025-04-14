@@ -1,6 +1,6 @@
 use crate::util::Config;
 use axum::routing::get;
-use axum::{Router, ServiceExt};
+use axum::{Router};
 use sqlx::{Pool, Postgres};
 use tower_http::cors::CorsLayer;
 use void_log::log_info;

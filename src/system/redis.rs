@@ -39,13 +39,13 @@ impl UserInfo {
         let json_str = serde_json::to_string(&self).unwrap();
         let config = Config::get().await.get_redis();
         let mut conn = config.redis();
-        let _: () = conn.set_ex(&self.id, json_str, ex_time).unwrap();
+        let _: () = conn.set_ex(&self.token, json_str, ex_time).unwrap();
     }
 
     pub async fn get_user(key: &str) -> serde_json::Result<Self> {
         let config = Config::get().await.get_redis();
         let mut conn = config.redis();
-        let json_str = conn.get::<_, String>(key).unwrap();
+        let json_str = conn.get::<_, String>(key).unwrap_or_default();
         serde_json::from_str(&json_str)
     }
 }

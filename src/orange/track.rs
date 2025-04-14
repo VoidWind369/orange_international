@@ -1,12 +1,11 @@
-use crate::orange::Round;
 use crate::orange::clan_point::ClanPoint;
+use crate::orange::Round;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
+use sqlx::{query, query_as, Error, FromRow, Pool, Postgres, Type};
 use uuid::Uuid;
-use void_log::log_info;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct Track {
@@ -109,7 +108,7 @@ impl Track {
         limit: i64,
         pool: &Pool<Postgres>,
     ) -> Result<Vec<Self>, Error> {
-        query_as::<_, Self>("select * from orange.track where self_clan_id = $1 or rival_clan_id = $1 order by create_time desc limit $2")
+        query_as::<_, Self>("select ot.*, c1.tag self_tag, c1.\"name\" self_name, c2.tag rival_tag, c2.\"name\" rival_name from orange.track ot, orange.clan c1, orange.clan c2 where ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and self_clan_id = $1 or rival_clan_id = $1 order by create_time desc limit $2")
             .bind(clan_id)
             .bind(limit)
             .fetch_all(pool)

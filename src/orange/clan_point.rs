@@ -65,7 +65,7 @@ impl ClanPoint {
 
 impl Clan {
     pub async fn point_select(&self, pool: &Pool<Postgres>) -> Result<ClanPoint, Error> {
-        query_as::<_, ClanPoint>("select * from clan_point where clan_id = $1")
+        query_as("select * from clan_point where clan_id = $1")
             .bind(&self.id)
             .fetch_one(pool)
             .await

@@ -15,6 +15,7 @@ mod group;
 
 pub use group::Group;
 pub use user::User;
+pub use redis::UserInfo;
 
 pub fn router() -> Router<AppState> {
     Router::new()

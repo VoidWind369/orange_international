@@ -4,17 +4,16 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use void_log::{log_info, log_warn};
-use crate::orange;
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Clan {
     pub reason: Option<String>,
     pub message: Option<String>,
     pub detail: Option<Value>,
+    pub r#type: Option<String>,
     pub tag: Option<String>,
     pub name: Option<String>,
-    pub r#type: Option<String>,
     pub description: Option<String>,
     pub location: Option<ClanLocation>,
     pub is_family_friendly: Option<bool>,
@@ -41,7 +40,7 @@ pub struct Clan {
     pub clan_capital: Option<ClanCapital>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClanLocation {
     pub id: Option<i64>,
@@ -50,7 +49,7 @@ pub struct ClanLocation {
     pub country_code: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ClanIconUrls {
     pub small: Option<String>,
     pub large: Option<String>,
@@ -58,7 +57,7 @@ pub struct ClanIconUrls {
     pub tiny: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ClanInfo {
     pub id: Option<i64>,
     pub name: Option<String>,
@@ -66,7 +65,7 @@ pub struct ClanInfo {
 
 pub type ClanMemberLists = Vec<ClanMemberList>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct ClanMemberList {
     pub tag: Option<String>,
@@ -88,7 +87,7 @@ pub struct ClanMemberList {
 
 pub type ClanInfoIcons = Vec<ClanInfoIcon>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClanInfoIcon {
     pub id: Option<i64>,
@@ -98,18 +97,18 @@ pub struct ClanInfoIcon {
 
 pub type ClanMemberListPlayerHouseElements = Vec<ClanMemberListPlayerHouseElement>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ClanMemberListPlayerHouse {
     pub elements: Option<ClanMemberListPlayerHouseElements>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ClanMemberListPlayerHouseElement {
     pub r#type: Option<String>,
     pub id: Option<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClanCapital {
     pub capital_hall_level: Option<i64>,
@@ -118,7 +117,7 @@ pub struct ClanCapital {
 
 pub type ClanCapitalDistricts = Vec<ClanCapitalDistrict>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClanCapitalDistrict {
     pub id: Option<i64>,
@@ -126,7 +125,7 @@ pub struct ClanCapitalDistrict {
     pub district_hall_level: Option<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClanChatLanguage {
     pub id: Option<i64>,

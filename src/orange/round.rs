@@ -1,9 +1,7 @@
-use crate::orange::Clan;
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::postgres::PgSeverity::Log;
-use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
