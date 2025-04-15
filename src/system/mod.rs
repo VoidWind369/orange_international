@@ -1,25 +1,24 @@
-use crate::util::un_authorization;
 use crate::AppState;
 use axum::extract::{Path, State};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
+use axum::routing::get;
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 use uuid::Uuid;
-use void_log::log_info;
+use void_log::{log_info, log_warn};
 
+mod group;
 mod redis;
 mod user;
-mod group;
 
+pub use redis::UserInfo;
 pub use group::Group;
 pub use user::User;
-pub use redis::UserInfo;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/login", post(login))
+        .route("/login", get(check_online).post(login))
         .route("/user", get(users).post(user_insert).put(user_update))
         .route("/user/{id}", get(user).delete(user_delete))
 }
@@ -44,10 +43,25 @@ async fn login(
     }
 }
 
-async fn users(State(app_state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+async fn check_online(AuthBearer(token): AuthBearer) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(vec![]));
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        StatusCode::UNAUTHORIZED
+    } else {
+        StatusCode::OK
+    }
+    // ********************鉴权********************
+}
+
+async fn users(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
@@ -58,11 +72,12 @@ async fn users(State(app_state): State<AppState>, headers: HeaderMap) -> impl In
 
 async fn user(
     State(app_state): State<AppState>,
-    headers: HeaderMap,
+    AuthBearer(token): AuthBearer,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(&headers) {
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
@@ -74,11 +89,12 @@ async fn user(
 
 async fn user_insert(
     State(app_state): State<AppState>,
-    headers: HeaderMap,
+    AuthBearer(token): AuthBearer,
     Json(data): Json<User>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(&headers) {
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
@@ -90,11 +106,12 @@ async fn user_insert(
 
 async fn user_update(
     State(app_state): State<AppState>,
-    headers: HeaderMap,
+    AuthBearer(token): AuthBearer,
     Json(data): Json<User>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(&headers) {
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
@@ -106,11 +123,12 @@ async fn user_update(
 
 async fn user_delete(
     State(app_state): State<AppState>,
-    headers: HeaderMap,
+    AuthBearer(token): AuthBearer,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(&headers) {
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************

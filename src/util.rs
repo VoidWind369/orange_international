@@ -1,5 +1,3 @@
-use axum::http::HeaderMap;
-use axum::http::header::AUTHORIZATION;
 use r2d2::PooledConnection;
 use redis::Client;
 use serde::{Deserialize, Serialize};
@@ -118,40 +116,5 @@ impl ConfigDatabase {
             Client::open(self.url.unwrap_or("redis://127.0.0.1/".parse().unwrap())).unwrap();
         let pool = r2d2::Pool::builder().build(client).unwrap();
         pool.get().unwrap()
-    }
-}
-
-pub fn un_authorization(headers: &HeaderMap) -> bool {
-    if let Some(authorization) = headers.get(AUTHORIZATION) {
-        if authorization.to_str().unwrap_or_default().eq("123456") {
-            false
-        } else {
-            true
-        }
-    } else {
-        true
-    }
-}
-
-pub fn bearer(token: &str) -> bool {
-    token.eq("123456")
-}
-
-pub struct ApiResponse<D>
-where
-    D: Serialize,
-{
-    pub status: bool,
-    pub msg: String,
-    pub body: D,
-}
-
-impl<D: Serialize> ApiResponse<D> {
-    pub fn new(status: bool, msg: &str, body: D) -> Self {
-        Self {
-            status,
-            msg: msg.to_string(),
-            body,
-        }
     }
 }

@@ -4,15 +4,14 @@ mod round;
 mod series;
 mod track;
 
-use crate::AppState;
 use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
 use crate::system::UserInfo;
-use crate::util::un_authorization;
+use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
-use axum::routing::get;
+use axum::routing::{get, head};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 pub use clan::Clan;
@@ -24,7 +23,7 @@ use void_log::{log_info, log_warn};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/clan", get(clans).post(clan_insert))
+        .route("/clan", head(clans).post(clan_insert))
         .route("/clan/{id}", get(clan))
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
@@ -32,10 +31,14 @@ pub fn router() -> Router<AppState> {
 }
 
 /// # All Clan
-async fn clans(State(app_state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+async fn clans(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(vec![]));
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
@@ -46,12 +49,13 @@ async fn clans(State(app_state): State<AppState>, headers: HeaderMap) -> impl In
 
 async fn clan(
     State(app_state): State<AppState>,
-    headers: HeaderMap,
+    AuthBearer(token): AuthBearer,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(Default::default()));
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
@@ -62,12 +66,14 @@ async fn clan(
 
 async fn clan_insert(
     State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
     headers: HeaderMap,
     Json(data): Json<Clan>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if un_authorization(&headers) {
-        return (StatusCode::UNAUTHORIZED, Json(-1));
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
@@ -87,7 +93,8 @@ async fn rounds(
     AuthBearer(token): AuthBearer,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if !token.eq("cfa*login*auth") {
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
@@ -139,7 +146,8 @@ async fn tracks(
     AuthBearer(token): AuthBearer,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if !token.eq("cfa*login*auth") {
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************

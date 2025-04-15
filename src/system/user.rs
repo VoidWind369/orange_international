@@ -106,17 +106,20 @@ impl User {
         if let Ok(parsed_hash) = PasswordHash::new(&self.password.clone().unwrap()) {
             log_info!("用户数据校验");
             if let Err(e) = argon2.verify_password(password.as_bytes(), &parsed_hash) {
+                // 校验失败
                 log_warn!("Login failed: {e}");
                 None
             } else {
+                // 校验成功
                 let timestamp = Utc::now().timestamp();
                 let id = &self.id.unwrap();
                 let code = &self.code.clone().unwrap();
 
                 let token = format!("{}{}{}", timestamp, id, code);
 
-                // 存Redis
+                // 生成登录信息
                 let user_info = UserInfo::new(self.clone(), token, clans, groups);
+                // 存Redis
                 user_info.set_user(3600).await;
                 Some(user_info)
             }
@@ -127,6 +130,7 @@ impl User {
     }
 
     pub async fn verify_login(&self, pool: &Pool<Postgres>) -> Option<UserInfo> {
+        // 查用户
         let data_user =
             query_as::<_, User>("select * from public.user where email = $1 or code = $1")
                 .bind(&self.email)
@@ -134,10 +138,13 @@ impl User {
                 .await
                 .unwrap_or_default();
         log_info!("{:?}", &data_user);
+        // 查部落
         let user_clans = data_user.user_clans(pool).await.unwrap();
+        // 查权限
         let user_groups = data_user.user_groups(pool).await.unwrap();
         log_info!("{:?}", &user_clans);
         log_info!("{:?}", &user_groups);
+        // 通过查到的用户数据校验
         data_user
             .verify_password(&self.password.clone().unwrap(), user_clans, user_groups)
             .await
