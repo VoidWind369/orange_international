@@ -2,7 +2,7 @@ use crate::orange::Clan;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
+use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
 use uuid::Uuid;
 use void_log::log_warn;
 
@@ -13,6 +13,7 @@ pub struct ClanPoint {
     pub create_time: DateTime<Utc>,
     pub update_time: DateTime<Utc>,
     pub status: Option<i16>,
+    pub reward_point: i64,
 }
 
 impl ClanPoint {
