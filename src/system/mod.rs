@@ -2,7 +2,7 @@ use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::get;
+use axum::routing::{get, head};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 use uuid::Uuid;
@@ -12,13 +12,13 @@ mod group;
 mod redis;
 mod user;
 
-pub use redis::UserInfo;
 pub use group::Group;
+pub use redis::UserInfo;
 pub use user::User;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/login", get(check_online).post(login))
+        .route("/login", head(check_online).post(login).delete(logout))
         .route("/user", get(users).post(user_insert).put(user_update))
         .route("/user/{id}", get(user).delete(user_delete))
 }
@@ -41,6 +41,16 @@ async fn login(
     } else {
         (StatusCode::UNAUTHORIZED, Json::default())
     }
+}
+
+async fn logout(AuthBearer(token): AuthBearer) -> impl IntoResponse {
+    log_info!("Logout: {}", &token);
+    let res = if let Ok(_) = UserInfo::del_user(&token).await {
+        1
+    } else {
+        0
+    };
+    Json(res)
 }
 
 async fn check_online(AuthBearer(token): AuthBearer) -> impl IntoResponse {

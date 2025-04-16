@@ -1,7 +1,7 @@
 use crate::orange::Clan;
 use crate::system::{Group, User};
 use crate::util::Config;
-use redis::Commands;
+use redis::{Commands, RedisResult, Value};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use uuid::Uuid;
@@ -47,6 +47,12 @@ impl UserInfo {
         let mut conn = config.redis();
         let json_str = conn.get::<_, String>(key).unwrap_or_default();
         serde_json::from_str(&json_str)
+    }
+
+    pub async fn del_user(key: &str) -> RedisResult<Value> {
+        let config = Config::get().await.get_redis();
+        let mut conn = config.redis();
+        conn.del(key)
     }
 }
 
