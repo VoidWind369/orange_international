@@ -23,7 +23,7 @@ use void_log::{log_info, log_warn};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/clan", head(clans).post(clan_insert))
+        .route("/clan", get(clans).post(clan_insert))
         .route("/clan/{id}", get(clan))
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
