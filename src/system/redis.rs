@@ -35,6 +35,10 @@ impl UserInfo {
         self.token.clone()
     }
 
+    pub fn get_id(&self) -> Uuid {
+        self.id.clone()
+    }
+
     pub async fn set_user(&self, ex_time: u64) {
         let json_str = serde_json::to_string(&self).unwrap();
         let config = Config::get().await.get_redis();

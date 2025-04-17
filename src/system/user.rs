@@ -1,4 +1,4 @@
-use crate::orange::Clan;
+use crate::orange::{Clan, ClanUser};
 use crate::system::Group;
 use crate::system::UserInfo;
 use crate::util::Config;
@@ -89,6 +89,8 @@ impl User {
     }
 
     pub async fn delete(pool: &Pool<Postgres>, id: Uuid) -> Result<PgQueryResult, Error> {
+        UserGroup::delete_user(id, pool).await?;
+        ClanUser::delete_user(id, pool).await?;
         query("delete from public.user where id = $1")
             .bind(id)
             .execute(pool)
@@ -147,6 +149,43 @@ impl User {
         // 通过查到的用户数据校验
         data_user
             .verify_password(&self.password.clone().unwrap(), user_clans, user_groups)
+            .await
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
+pub struct UserGroup {
+    pub user_id: Uuid,
+    pub group_id: Uuid,
+}
+
+impl UserGroup {
+    pub async fn select(&self, pool: &Pool<Postgres>) -> Result<Self, Error> {
+        query_as("select * from orange.user_group where user_id = $1 and group_id = $2")
+            .fetch_one(pool)
+            .await
+    }
+
+    pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        query("insert into orange.user_group values ($1, $2)")
+            .bind(self.user_id)
+            .bind(self.group_id)
+            .execute(pool)
+            .await
+    }
+
+    pub async fn delete(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        query("delete from orange.user_group where user_id = $1 and group_id = $2")
+            .bind(self.user_id)
+            .bind(self.group_id)
+            .execute(pool)
+            .await
+    }
+
+    pub async fn delete_user(user_id: Uuid, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        query("delete from orange.user_group where user_id = $1")
+            .bind(user_id)
+            .execute(pool)
             .await
     }
 }

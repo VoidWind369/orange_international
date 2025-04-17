@@ -4,17 +4,18 @@ mod round;
 mod series;
 mod track;
 
+use crate::AppState;
 use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
-use crate::system::UserInfo;
-use crate::AppState;
+use crate::system::{User, UserInfo};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
-use axum::routing::{get, head};
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 pub use clan::Clan;
+pub use clan::ClanUser;
 pub use round::Round;
 use serde_json::Value;
 pub use track::Track;
@@ -24,10 +25,12 @@ use void_log::{log_info, log_warn};
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/clan", get(clans).post(clan_insert))
-        .route("/clan/{id}", get(clan))
+        .route("/clan/{id}", get(clan).delete(clan_delete))
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
         .route("/track", get(tracks).post(new_track))
+        .route("/user_clans", get(user_clans))
+        .route("/clan_user", post(insert_cu).delete(delete_cu))
 }
 
 /// # All Clan
@@ -86,6 +89,23 @@ async fn clan_insert(
 
     let rows_affected = res.unwrap_or_default().rows_affected();
     (StatusCode::OK, Json(rows_affected as i64))
+}
+
+async fn clan_delete(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    let res = Clan::delete(&app_state.pool, id).await;
+    let rows_affected = res.unwrap_or_default().rows_affected();
+    (StatusCode::OK, Json(rows_affected))
 }
 
 async fn rounds(
@@ -273,4 +293,59 @@ async fn new_track(
         rival_point.rows_affected()
     );
     (StatusCode::OK, Json(track))
+}
+
+async fn user_clans(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    let user_info = UserInfo::get_user(&token).await.unwrap_or_default();
+    let user = User::select(&app_state.pool, user_info.get_id()).await.unwrap_or_default();
+    let clans = user.user_clans(&app_state.pool).await.unwrap_or_default();
+    (StatusCode::OK, Json(clans))
+}
+
+async fn insert_cu(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Json(data): Json<ClanUser>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    if let Ok(r) = data.insert(&app_state.pool).await {
+        (StatusCode::OK, Json(r.rows_affected()))
+    } else {
+        (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
+    }
+}
+
+async fn delete_cu(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Json(data): Json<ClanUser>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    if let Ok(r) = data.delete(&app_state.pool).await {
+        (StatusCode::OK, Json(r.rows_affected()))
+    } else {
+        (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
+    }
 }
