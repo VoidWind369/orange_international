@@ -247,8 +247,8 @@ async fn new_track(
     log_info!("Rival {:?}", &rival_clan);
 
     // 本家积分数据
-    let (self_point, has_self_tracks) = if let Ok(clan) = self_clan {
-        let mut point = clan.point_select(&app_state.pool).await.unwrap();
+    let (self_point, has_self_tracks) = if let Ok(ref clan) = self_clan {
+        let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
         point.clan_id = clan.id.unwrap_or_default();
 
         let cst = Track::select_desc_limit(point.clan_id, 1, &app_state.pool)
@@ -262,8 +262,8 @@ async fn new_track(
     };
 
     // 对家积分数据
-    let (rival_point, has_rival_tracks) = if let Ok(mut clan) = rival_clan {
-        let mut point = clan.point_select(&app_state.pool).await.unwrap();
+    let (rival_point, has_rival_tracks) = if let Ok(ref clan) = rival_clan {
+        let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
         point.clan_id = clan.id.unwrap_or_default();
 
         let crt = Track::select_round(point.clan_id, &app_state.pool)
