@@ -1,10 +1,10 @@
-use crate::orange::clan_point::ClanPoint;
 use crate::orange::Round;
+use crate::orange::clan_point::ClanPoint;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{query, query_as, Error, FromRow, Pool, Postgres, Type};
+use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
@@ -36,16 +36,20 @@ enum TrackResult {
 
 impl Track {
     pub async fn new(
-        self_clan_point: ClanPoint,
-        rival_clan_point: ClanPoint,
+        self_clan_point: Option<ClanPoint>,
+        rival_clan_point: Option<ClanPoint>,
         pool: &Pool<Postgres>,
     ) -> Self {
         let round = Round::select_last(pool).await.unwrap_or_default();
+
+        let scp = self_clan_point.unwrap_or_default();
+        let rcp = rival_clan_point.unwrap_or_default();
+
         let mut track = Self {
-            self_clan_id: self_clan_point.clan_id,
-            rival_clan_id: rival_clan_point.clan_id,
-            self_history_point: self_clan_point.point,
-            rival_history_point: rival_clan_point.point,
+            self_clan_id: scp.clan_id,
+            rival_clan_id: rcp.clan_id,
+            self_history_point: scp.point,
+            rival_history_point: rcp.point,
             create_time: Utc::now(),
             round_id: round.get_id(),
             ..Default::default()
@@ -108,11 +112,17 @@ impl Track {
         limit: i64,
         pool: &Pool<Postgres>,
     ) -> Result<Vec<Self>, Error> {
-        query_as::<_, Self>("select ot.*, c1.tag self_tag, c1.\"name\" self_name, c2.tag rival_tag, c2.\"name\" rival_name from orange.track ot, orange.clan c1, orange.clan c2 where ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and self_clan_id = $1 or rival_clan_id = $1 order by create_time desc limit $2")
+        query_as("select ot.*, c1.tag self_tag, c1.\"name\" self_name, c2.tag rival_tag, c2.\"name\" rival_name from orange.track ot, orange.clan c1, orange.clan c2 where ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and self_clan_id = $1 or rival_clan_id = $1 order by create_time desc limit $2")
             .bind(clan_id)
             .bind(limit)
             .fetch_all(pool)
             .await
+    }
+
+    pub async fn select_round(clan_id: Uuid, pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
+        let round = Round::select_last(pool).await.unwrap_or_default();
+        query_as("select * from orange.track where (self_clan_id = $1 or rival_clan_id = $1) and round_id = $2 order by create_time desc limit 1")
+            .bind(clan_id).bind(round.get_id()).fetch_all(pool).await
     }
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {

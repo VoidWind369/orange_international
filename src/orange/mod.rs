@@ -208,20 +208,6 @@ async fn new_track(
     }
     // ********************鉴权********************
 
-    let self_tag = data["self_tag"].as_str().unwrap_or_default();
-
-    // 获取对家标签
-    let rival_tag = if let Some(tag) = data.get("rival_tag") {
-        tag.as_str().unwrap_or_default()
-    } else {
-        let war = War::get(self_tag).await;
-        if let Some(opponent_clan) = war.opponent {
-            &opponent_clan.tag.unwrap_or_default()
-        } else {
-            return (StatusCode::INTERNAL_SERVER_ERROR, Json::default());
-        }
-    };
-
     // 默认国际服
     let is_intel = if let Some(intel) = data.get("is_intel") {
         intel.as_bool().unwrap_or(true)
@@ -229,41 +215,72 @@ async fn new_track(
         true
     };
 
-    // Search Clan
-    let self_clan = Clan::select_tag(self_tag, is_intel, &app_state.pool)
-        .await
-        .unwrap_or_default();
-    let rival_clan = Clan::select_tag(rival_tag, is_intel, &app_state.pool)
-        .await
-        .unwrap_or_default();
+    // 获取本家标签
+    let self_tag = data["self_tag"].as_str().unwrap_or_default();
+
+    // 获取对家标签
+    let rival_tag = if let Some(tag) = data.get("rival_tag") {
+        log_info!("手动登记");
+        tag.as_str().unwrap_or_default()
+    } else if is_intel {
+        log_info!("国际服自动登记");
+        // 查对面标签
+        let war = War::get(self_tag).await;
+        if let Some(opponent_clan) = war.opponent {
+            &opponent_clan.tag.unwrap()
+        } else {
+            // 未开战
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json::default());
+        }
+    } else {
+        log_info!("国服无接口");
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json::default());
+    };
+
+    // 查询本家加盟状态
+    let self_clan = Clan::select_tag(self_tag, is_intel, &app_state.pool).await;
+
+    // 查询对家加盟状态
+    let rival_clan = Clan::select_tag(rival_tag, is_intel, &app_state.pool).await;
 
     log_info!("Self {:?}", &self_clan);
     log_info!("Rival {:?}", &rival_clan);
 
-    // Search Point
-    let mut self_point = self_clan
-        .point_select(&app_state.pool)
-        .await
-        .unwrap_or_default();
-    self_point.clan_id = self_clan.id.unwrap_or_default();
+    // 本家积分数据
+    let (self_point, has_self_tracks) = if let Ok(clan) = self_clan {
+        let mut point = clan.point_select(&app_state.pool).await.unwrap();
+        point.clan_id = clan.id.unwrap_or_default();
 
-    let mut rival_point = rival_clan
-        .point_select(&app_state.pool)
-        .await
-        .unwrap_or_default();
-    rival_point.clan_id = rival_clan.id.unwrap_or_default();
+        let cst = Track::select_desc_limit(point.clan_id, 1, &app_state.pool)
+            .await
+            .unwrap();
 
-    // 先添加Track
+        (Some(point), !cst.is_empty())
+    } else {
+        log_info!("标签错误");
+        (None, false)
+    };
+
+    // 对家积分数据
+    let (rival_point, has_rival_tracks) = if let Ok(mut clan) = rival_clan {
+        let mut point = clan.point_select(&app_state.pool).await.unwrap();
+        point.clan_id = clan.id.unwrap_or_default();
+
+        let crt = Track::select_round(point.clan_id, &app_state.pool)
+            .await
+            .unwrap();
+
+        (Some(point), !crt.is_empty())
+    } else {
+        log_info!("盟外部落");
+        (None, false)
+    };
+
+    // 添加Track获取输赢（本盟/中间库）
     let track = Track::new(self_point, rival_point, &app_state.pool).await;
-    let check_self_tracks = Track::select_desc_limit(track.self_clan_id, 1, &app_state.pool)
-        .await
-        .unwrap();
-    let check_rival_tracks = Track::select_desc_limit(track.rival_clan_id, 1, &app_state.pool)
-        .await
-        .unwrap();
 
     // 预查限制重复登记
-    if !check_self_tracks.is_empty() || !check_rival_tracks.is_empty() {
+    if has_self_tracks || has_rival_tracks {
         log_warn!("预查重复登记");
         return (StatusCode::FORBIDDEN, Json(track));
     }
@@ -277,21 +294,31 @@ async fn new_track(
     };
 
     // 更新self
-    let self_point = ClanPoint::new(track.self_clan_id, track.self_now_point)
-        .insert_or_update(&app_state.pool)
-        .await
-        .unwrap();
+    let self_point = if self_clan.is_ok() {
+        ClanPoint::new(track.self_clan_id, track.self_now_point)
+            .insert_or_update(&app_state.pool)
+            .await
+            .unwrap()
+            .rows_affected()
+    } else {
+        0
+    };
 
     // 更新rival
-    let rival_point = ClanPoint::new(track.rival_clan_id, track.rival_now_point)
-        .insert_or_update(&app_state.pool)
-        .await
-        .unwrap();
+    let rival_point = if rival_clan.is_ok() {
+        ClanPoint::new(track.rival_clan_id, track.rival_now_point)
+            .insert_or_update(&app_state.pool)
+            .await
+            .unwrap()
+            .rows_affected()
+    } else {
+        0
+    };
 
     log_info!(
         "self: {} | rival: {} | track: {track_res}",
-        self_point.rows_affected(),
-        rival_point.rows_affected()
+        self_point,
+        rival_point
     );
     (StatusCode::OK, Json(track))
 }
