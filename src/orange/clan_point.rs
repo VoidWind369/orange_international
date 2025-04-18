@@ -14,6 +14,9 @@ pub struct ClanPoint {
     pub update_time: DateTime<Utc>,
     pub status: Option<i16>,
     pub reward_point: i64,
+
+    pub tag: Option<String>,
+    pub name: Option<String>,
 }
 
 impl ClanPoint {
@@ -26,9 +29,9 @@ impl ClanPoint {
         }
     }
 
-    pub async fn select(&self, pool: &Pool<Postgres>) -> Result<Self, Error> {
-        query_as("select * from orange.clan_point where clan_id = $1")
-            .bind(self.clan_id)
+    pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
+        query_as("select oc.tag, oc.name, ocp.* from orange.clan oc, orange.clan_point ocp where oc.id = ocp.clan_id and ocp.clan_id = $1")
+            .bind(id)
             .fetch_one(pool)
             .await
     }
@@ -54,8 +57,18 @@ impl ClanPoint {
             .await
     }
 
+    pub async fn update_reward_point(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        let now = Utc::now();
+        query("update orange.clan_point set reward_point = $1, update_time = $2 where clan_id = $3")
+            .bind(&self.reward_point)
+            .bind(now)
+            .bind(&self.clan_id)
+            .execute(pool)
+            .await
+    }
+
     pub async fn insert_or_update(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        if let Err(e) = self.select(pool).await {
+        if let Err(e) = Self::select(pool, self.clan_id).await {
             log_warn!("Select Null {e}");
             self.insert(pool).await
         } else {

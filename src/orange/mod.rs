@@ -31,6 +31,7 @@ pub fn router() -> Router<AppState> {
         .route("/track", get(tracks).post(new_track))
         .route("/user_clans", get(user_clans))
         .route("/clan_user", post(insert_cu).delete(delete_cu))
+        .route("/clan_point/{id}", get(clan_point))
 }
 
 /// # All Clan
@@ -307,7 +308,9 @@ async fn user_clans(
     // ********************鉴权********************
 
     let user_info = UserInfo::get_user(&token).await.unwrap_or_default();
-    let user = User::select(&app_state.pool, user_info.get_id()).await.unwrap_or_default();
+    let user = User::select(&app_state.pool, user_info.get_id())
+        .await
+        .unwrap_or_default();
     let clans = user.user_clans(&app_state.pool).await.unwrap_or_default();
     (StatusCode::OK, Json(clans))
 }
@@ -345,6 +348,27 @@ async fn delete_cu(
 
     if let Ok(r) = data.delete(&app_state.pool).await {
         (StatusCode::OK, Json(r.rows_affected()))
+    } else {
+        (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
+    }
+}
+
+async fn clan_point(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    let res = ClanPoint::select(&app_state.pool, id).await;
+    log_info!("clan_point {id}: {res:?}");
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r))
     } else {
         (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
     }

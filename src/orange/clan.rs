@@ -5,7 +5,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
-use std::str::FromStr;
 use uuid::Uuid;
 use void_log::log_info;
 
@@ -173,10 +172,6 @@ impl api::Clan {
 #[tokio::test]
 async fn test() {
     let pool = Config::get().await.get_database().get().await;
-    let a = ClanUser {
-        clan_id: Uuid::from_str("8546d688-fe41-4fa3-aec7-fb7020f51e34").unwrap(),
-        user_id: Uuid::from_str("a036b14c-9f83-4369-9086-3a82c0c8f56e").unwrap(),
-    };
-    let b = a.delete(&pool).await.unwrap();
-    log_info!("{}", b.rows_affected())
+    let a = Clan::select_all(&pool).await.unwrap();
+    log_info!("{:?}", a)
 }
