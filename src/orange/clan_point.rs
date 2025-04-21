@@ -79,7 +79,7 @@ impl ClanPoint {
 
 impl Clan {
     pub async fn point_select(&self, pool: &Pool<Postgres>) -> Result<ClanPoint, Error> {
-        query_as("select * from clan_point where clan_id = $1")
+        query_as("select ocp.*, oc.tag, oc.name from orange.clan_point ocp, orange.clan oc where ocp.clan_id = oc.id and ocp.clan_id = $1")
             .bind(&self.id)
             .fetch_one(pool)
             .await

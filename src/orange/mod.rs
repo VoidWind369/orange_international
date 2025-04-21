@@ -230,6 +230,7 @@ async fn new_track(
             &opponent_clan.tag.unwrap()
         } else {
             // 未开战
+            log_warn!("未开战");
             return (StatusCode::INTERNAL_SERVER_ERROR, Json::default());
         }
     } else {
@@ -237,18 +238,19 @@ async fn new_track(
         return (StatusCode::INTERNAL_SERVER_ERROR, Json::default());
     };
 
+    log_info!("登记1: 获取双方标签 {self_tag} vs {rival_tag}");
+
     // 查询本家加盟状态
     let self_clan = Clan::select_tag(self_tag, is_intel, &app_state.pool).await;
 
     // 查询对家加盟状态
     let rival_clan = Clan::select_tag(rival_tag, is_intel, &app_state.pool).await;
 
-    log_info!("Self {:?}", &self_clan);
-    log_info!("Rival {:?}", &rival_clan);
-
     // 本家积分数据
     let (self_point, has_self_tracks) = if let Ok(ref clan) = self_clan {
+        log_info!("登记2: 本家加盟状态 {:?}", &clan);
         let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
+        log_info!("登记3: 本家积分状态 {:?}", &point);
         point.clan_id = clan.id.unwrap_or_default();
 
         let cst = Track::select_desc_limit(point.clan_id, 1, &app_state.pool)
@@ -263,7 +265,9 @@ async fn new_track(
 
     // 对家积分数据
     let (rival_point, has_rival_tracks) = if let Ok(ref clan) = rival_clan {
+        log_info!("登记2: 对家加盟状态 {:?}", &clan);
         let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
+        log_info!("登记3: 对家积分状态 {:?}", &point);
         point.clan_id = clan.id.unwrap_or_default();
 
         let crt = Track::select_round(point.clan_id, &app_state.pool)
@@ -276,8 +280,14 @@ async fn new_track(
         (None, false)
     };
 
+    // 本轮已登记直接返回
+    if let Ok(track) = Track::select_registered(&app_state.pool, &self_point, &rival_point).await {
+        log_info!("已登记 {:?}", track);
+        return (StatusCode::OK, Json(track));
+    };
+
     // 添加Track获取输赢（本盟/中间库）
-    let track = Track::new(self_point, rival_point, &app_state.pool).await;
+    let track = Track::new(&app_state.pool, self_point, rival_point).await;
 
     // 预查限制重复登记
     if has_self_tracks || has_rival_tracks {
@@ -320,6 +330,8 @@ async fn new_track(
         self_point,
         rival_point
     );
+
+    log_info!("新登记 {:?}", track);
     (StatusCode::OK, Json(track))
 }
 

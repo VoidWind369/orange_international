@@ -6,6 +6,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
 use uuid::Uuid;
+use void_log::log_info;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct Track {
@@ -36,9 +37,9 @@ enum TrackResult {
 
 impl Track {
     pub async fn new(
+        pool: &Pool<Postgres>,
         self_clan_point: Option<ClanPoint>,
         rival_clan_point: Option<ClanPoint>,
-        pool: &Pool<Postgres>,
     ) -> Self {
         let round = Round::select_last(pool).await.unwrap_or_default();
 
@@ -105,6 +106,28 @@ impl Track {
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as("select ot.*, c1.tag self_tag, c1.\"name\" self_name, c2.tag rival_tag, c2.\"name\" rival_name from orange.track ot, orange.clan c1, orange.clan c2 where ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id").fetch_all(pool).await
+    }
+
+    pub async fn select_registered(
+        pool: &Pool<Postgres>,
+        self_clan_point: &Option<ClanPoint>,
+        rival_clan_point: &Option<ClanPoint>,
+    ) -> Result<Self, Error> {
+        let sc = if let Some(scp) = self_clan_point {
+            scp
+        } else {
+            return Err(Error::ColumnNotFound("Not Found".to_string()))
+        };
+
+        let rc = if let Some(rcp) = rival_clan_point {
+            rcp
+        } else {
+            return Err(Error::ColumnNotFound("Not Found".to_string()))
+        };
+        log_info!("Track: Self Point{sc:?}");
+        log_info!("Track: Rival Point{rc:?}");
+        query_as("select ot.*, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.clan c1, orange.clan c2 where ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and ((self_clan_id = $1 and rival_clan_id = $2) or (rival_clan_id = $1 and self_clan_id = $2))")
+            .bind(sc.clan_id).bind(rc.clan_id).fetch_one(pool).await
     }
 
     pub async fn select_desc_limit(
