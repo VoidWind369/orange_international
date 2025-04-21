@@ -24,6 +24,7 @@ pub struct User {
     create_time: DateTime<Utc>,
     #[serde(skip_deserializing)]
     update_time: DateTime<Utc>,
+    #[serde(skip_serializing)]
     password: Option<String>,
 }
 
