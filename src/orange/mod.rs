@@ -247,13 +247,14 @@ async fn new_track(
     let rival_clan = Clan::select_tag(rival_tag, is_intel, &app_state.pool).await;
 
     // 本家积分数据
+    let round = Round::select_last(&app_state.pool).await.unwrap_or_default();
     let (self_point, has_self_tracks) = if let Ok(ref clan) = self_clan {
         log_info!("登记2: 本家加盟状态 {:?}", &clan);
         let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
         log_info!("登记3: 本家积分状态 {:?}", &point);
         point.clan_id = clan.id.unwrap_or_default();
 
-        let cst = Track::select_desc_limit(point.clan_id, 1, &app_state.pool)
+        let cst = Track::select_round(&app_state.pool, point.clan_id)
             .await
             .unwrap();
 
@@ -270,7 +271,7 @@ async fn new_track(
         log_info!("登记3: 对家积分状态 {:?}", &point);
         point.clan_id = clan.id.unwrap_or_default();
 
-        let crt = Track::select_round(point.clan_id, &app_state.pool)
+        let crt = Track::select_round(&app_state.pool, point.clan_id)
             .await
             .unwrap();
 

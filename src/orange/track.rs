@@ -71,10 +71,10 @@ impl Track {
             track.lose()
         } else {
             // Check 10 history
-            let self_tracks = Track::select_desc_limit(track.self_clan_id, 10, pool)
+            let self_tracks = Track::select_desc_limit(pool, track.self_clan_id, 10)
                 .await
                 .unwrap_or_default();
-            let rival_tracks = Track::select_desc_limit(track.rival_clan_id, 10, pool)
+            let rival_tracks = Track::select_desc_limit(pool, track.rival_clan_id, 10)
                 .await
                 .unwrap_or_default();
             track.check_history(self_tracks, rival_tracks);
@@ -132,9 +132,9 @@ impl Track {
     }
 
     pub async fn select_desc_limit(
+        pool: &Pool<Postgres>,
         clan_id: Uuid,
         limit: i64,
-        pool: &Pool<Postgres>,
     ) -> Result<Vec<Self>, Error> {
         query_as("select ot.*, r.code round_code, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.round r, orange.clan c1, orange.clan c2 where ot.round_id = r.id and ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and self_clan_id = $1 or rival_clan_id = $1 order by create_time desc limit $2")
             .bind(clan_id)
@@ -143,7 +143,7 @@ impl Track {
             .await
     }
 
-    pub async fn select_round(clan_id: Uuid, pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
+    pub async fn select_round(pool: &Pool<Postgres>, clan_id: Uuid) -> Result<Vec<Self>, Error> {
         let round = Round::select_last(pool).await.unwrap_or_default();
         query_as("select ot.*, r.code round_code, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.round r, orange.clan c1, orange.clan c2 where ot.round_id = r.id and ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and (ot.self_clan_id = $1 or ot.rival_clan_id = $1) and ot.round_id = $2 order by ot.create_time desc limit 1")
             .bind(clan_id).bind(round.get_id()).fetch_all(pool).await
