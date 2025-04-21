@@ -106,7 +106,7 @@ impl Track {
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as("select ot.*, r.code round_code, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.round r, orange.clan c1, orange.clan c2 where ot.round_id = r.id and self_clan_id = c1.id and ot.rival_clan_id = c2.id").fetch_all(pool).await
+        query_as("select ot.*, r.code round_code, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.round r, orange.clan c1, orange.clan c2 where ot.round_id = r.id and self_clan_id = c1.id and ot.rival_clan_id = c2.id order by create_time desc").fetch_all(pool).await
     }
 
     pub async fn select_registered(
