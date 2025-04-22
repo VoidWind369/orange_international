@@ -4,10 +4,10 @@ mod round;
 mod series;
 mod track;
 
+use crate::AppState;
 use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
 use crate::system::{User, UserInfo};
-use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -30,6 +30,7 @@ pub fn router() -> Router<AppState> {
         .route("/last_round", get(last_round))
         .route("/track", get(tracks).post(new_track))
         .route("/user_clans", get(user_clans))
+        .route("/user_clans/{id}", get(userid_clans))
         .route("/clan_user", post(insert_cu).delete(delete_cu))
         .route("/clan_point/{id}", get(clan_point))
 }
@@ -295,7 +296,6 @@ async fn new_track(
     // 添加Track获取输赢（本盟/中间库）
     let track = Track::new(&app_state.pool, self_point, rival_point).await;
 
-
     // 添加track记录（数据库Unique限制重复）
     let track_res = if let Ok(qr) = track.insert(&app_state.pool).await {
         qr.rows_affected()
@@ -349,6 +349,25 @@ async fn user_clans(
 
     let user_info = UserInfo::get_user(&token).await.unwrap_or_default();
     let user = User::select(&app_state.pool, user_info.get_id())
+        .await
+        .unwrap_or_default();
+    let clans = user.user_clans(&app_state.pool).await.unwrap_or_default();
+    (StatusCode::OK, Json(clans))
+}
+
+async fn userid_clans(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+    
+    let user = User::select(&app_state.pool, id)
         .await
         .unwrap_or_default();
     let clans = user.user_clans(&app_state.pool).await.unwrap_or_default();
