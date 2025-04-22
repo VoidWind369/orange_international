@@ -4,10 +4,10 @@ mod round;
 mod series;
 mod track;
 
-use crate::AppState;
 use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
 use crate::system::{User, UserInfo};
+use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -18,7 +18,6 @@ pub use clan::Clan;
 pub use clan::ClanUser;
 pub use round::Round;
 use serde_json::Value;
-use serde_yml::libyml::tag;
 pub use track::Track;
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
@@ -287,16 +286,17 @@ async fn new_track(
         return (StatusCode::OK, Json(track));
     };
 
-    // 添加Track获取输赢（本盟/中间库）
-    let track = Track::new(&app_state.pool, self_point, rival_point).await;
-
     // 预查限制重复登记
     if has_self_tracks || has_rival_tracks {
         log_warn!("预查重复登记");
-        return (StatusCode::FORBIDDEN, Json(track));
+        return (StatusCode::FORBIDDEN, Json::default());
     }
 
-    // 数据库Unique限制重复
+    // 添加Track获取输赢（本盟/中间库）
+    let track = Track::new(&app_state.pool, self_point, rival_point).await;
+
+
+    // 添加track记录（数据库Unique限制重复）
     let track_res = if let Ok(qr) = track.insert(&app_state.pool).await {
         qr.rows_affected()
     } else {

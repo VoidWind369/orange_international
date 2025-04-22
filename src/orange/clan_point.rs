@@ -47,20 +47,24 @@ impl ClanPoint {
             .await
     }
 
-    pub async fn update_point(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn update_point(&self, pool: &Pool<Postgres>, add: i64) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("update orange.clan_point set point = $1, update_time = $2 where clan_id = $3")
-            .bind(&self.point)
+            .bind(&self.point + add)
             .bind(now)
             .bind(&self.clan_id)
             .execute(pool)
             .await
     }
 
-    pub async fn update_reward_point(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn update_reward_point(
+        &self,
+        pool: &Pool<Postgres>,
+        reward_add: i64,
+    ) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("update orange.clan_point set reward_point = $1, update_time = $2 where clan_id = $3")
-            .bind(&self.reward_point)
+            .bind(&self.reward_point + reward_add)
             .bind(now)
             .bind(&self.clan_id)
             .execute(pool)
@@ -72,7 +76,7 @@ impl ClanPoint {
             log_warn!("Select Null {e}");
             self.insert(pool).await
         } else {
-            self.update_point(pool).await
+            self.update_point(pool, 0).await
         }
     }
 }

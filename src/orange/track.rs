@@ -63,12 +63,26 @@ impl Track {
             return track;
         }
 
-        if track.self_now_point < track.rival_now_point {
+        // 先手先用奖惩
+        if scp.reward_point > 0 {
+            // 先登记用奖惩
+            track.reward_win(scp, pool).await;
+            return track;
+        }
+
+        // 对手奖惩
+        if rcp.reward_point > 0 {
+            // 先登记用奖惩
+            track.reward_lose(rcp, pool).await;
+            return track;
+        }
+
+        if track.self_history_point < track.rival_history_point {
             // self < rival
-            track.win()
-        } else if track.self_now_point > track.rival_now_point {
+            track.win(scp, rcp, pool).await;
+        } else if track.self_history_point > track.rival_history_point {
             // self > rival
-            track.lose()
+            track.lose(scp, rcp, pool).await;
         } else {
             // Check 10 history
             let self_tracks = Track::select_desc_limit(pool, track.self_clan_id, 10)
@@ -77,32 +91,60 @@ impl Track {
             let rival_tracks = Track::select_desc_limit(pool, track.rival_clan_id, 10)
                 .await
                 .unwrap_or_default();
-            track.check_history(self_tracks, rival_tracks);
+            // 按历史10场判断
+            track
+                .check_history(self_tracks, rival_tracks, scp, rcp, pool)
+                .await;
         }
         track
     }
 
     /// # History Win Check
-    fn check_history(&mut self, self_track: Vec<Track>, rival_track: Vec<Track>) {
+    async fn check_history(
+        &mut self,
+        self_track: Vec<Track>,
+        rival_track: Vec<Track>,
+        scp: ClanPoint,
+        rcp: ClanPoint,
+        pool: &Pool<Postgres>,
+    ) {
         let self_win = count_win(self_track);
         let rival_win = count_win(rival_track);
         if self_win <= rival_win {
-            self.win();
+            self.win(scp, rcp, pool).await;
         } else {
-            self.lose();
+            self.lose(scp, rcp, pool).await;
         }
     }
 
-    fn win(&mut self) {
+    async fn win(&mut self, scp: ClanPoint, rcp: ClanPoint, pool: &Pool<Postgres>) {
         self.self_now_point = self.self_history_point + 1;
         self.rival_now_point = self.rival_history_point - 1;
         self.result = TrackResult::Win;
+        scp.update_point(pool, 1).await.unwrap();
+        rcp.update_point(pool, -1).await.unwrap();
     }
 
-    fn lose(&mut self) {
+    async fn lose(&mut self, scp: ClanPoint, rcp: ClanPoint, pool: &Pool<Postgres>) {
         self.self_now_point = self.self_history_point - 1;
         self.rival_now_point = self.rival_history_point + 1;
         self.result = TrackResult::Lose;
+        scp.update_point(pool, -1).await.unwrap();
+        rcp.update_point(pool, 1).await.unwrap();
+    }
+
+    async fn reward_win(&mut self, scp: ClanPoint, pool: &Pool<Postgres>) {
+        self.self_now_point = self.self_history_point;
+        self.rival_now_point = self.rival_history_point;
+        self.result = TrackResult::Win;
+        scp.update_point(pool, -1).await.unwrap();
+    }
+
+    async fn reward_lose(&mut self, rcp: ClanPoint, pool: &Pool<Postgres>) {
+        self.self_now_point = self.self_history_point;
+        self.rival_now_point = self.rival_history_point;
+        self.result = TrackResult::Lose;
+        rcp.update_reward_point(pool, -1).await.unwrap();
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
@@ -117,13 +159,13 @@ impl Track {
         let sc = if let Some(scp) = self_clan_point {
             scp
         } else {
-            return Err(Error::ColumnNotFound("Not Found".to_string()))
+            return Err(Error::ColumnNotFound("Not Found".to_string()));
         };
 
         let rc = if let Some(rcp) = rival_clan_point {
             rcp
         } else {
-            return Err(Error::ColumnNotFound("Not Found".to_string()))
+            return Err(Error::ColumnNotFound("Not Found".to_string()));
         };
         log_info!("Track: Self Point{sc:?}");
         log_info!("Track: Rival Point{rc:?}");
