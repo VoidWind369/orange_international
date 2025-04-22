@@ -18,6 +18,7 @@ pub use clan::Clan;
 pub use clan::ClanUser;
 pub use round::Round;
 use serde_json::Value;
+use serde_yml::libyml::tag;
 pub use track::Track;
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
@@ -221,13 +222,13 @@ async fn new_track(
     // 获取对家标签
     let rival_tag = if let Some(tag) = data.get("rival_tag") {
         log_info!("手动登记");
-        tag.as_str().unwrap_or_default()
+        tag.as_str().unwrap_or_default().to_string()
     } else if is_intel {
         log_info!("国际服自动登记");
         // 查对面标签
         let war = War::get(self_tag).await;
-        if let Some(opponent_clan) = war.opponent {
-            &opponent_clan.tag.unwrap()
+        if let Some(opponent_clan_tag) = war.opponent.unwrap().tag {
+            opponent_clan_tag
         } else {
             // 未开战
             log_warn!("未开战");
@@ -244,7 +245,7 @@ async fn new_track(
     let self_clan = Clan::select_tag(self_tag, is_intel, &app_state.pool).await;
 
     // 查询对家加盟状态
-    let rival_clan = Clan::select_tag(rival_tag, is_intel, &app_state.pool).await;
+    let rival_clan = Clan::select_tag(&rival_tag, is_intel, &app_state.pool).await;
 
     // 本家积分数据
     let round = Round::select_last(&app_state.pool).await.unwrap_or_default();
