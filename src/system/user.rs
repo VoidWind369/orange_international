@@ -1,11 +1,10 @@
 use crate::orange::{Clan, ClanUser};
 use crate::system::Group;
 use crate::system::UserInfo;
-use crate::util::Config;
 use argon2::password_hash::SaltString;
 use argon2::password_hash::rand_core::OsRng;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};

@@ -1,4 +1,5 @@
 use crate::api;
+use crate::orange::clan_point::ClanPoint;
 use crate::system::User;
 use crate::util::Config;
 use chrono::{DateTime, Utc};
@@ -78,6 +79,7 @@ impl Clan {
 
     pub async fn delete(pool: &Pool<Postgres>, id: Uuid) -> Result<PgQueryResult, Error> {
         ClanUser::delete_clan(id, pool).await?;
+        ClanPoint::delete(pool, id).await?;
         query("delete from orange.clan where id = $1")
             .bind(id)
             .execute(pool)

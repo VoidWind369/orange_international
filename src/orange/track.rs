@@ -108,8 +108,8 @@ impl Track {
         rcp: ClanPoint,
         pool: &Pool<Postgres>,
     ) {
-        let self_win = count_win(self_track);
-        let rival_win = count_win(rival_track);
+        let self_win = count_win(self_track, scp.clan_id);
+        let rival_win = count_win(rival_track, rcp.clan_id);
         if self_win <= rival_win {
             self.win(scp, rcp, pool).await;
         } else {
@@ -209,10 +209,12 @@ impl Track {
 }
 
 /// # Count to history win
-fn count_win(tracks: Vec<Track>) -> i64 {
+fn count_win(tracks: Vec<Track>, clan_id: Uuid) -> i64 {
     let mut count = 0;
     for track in tracks {
-        if let TrackResult::Win = track.result {
+        let self_win = TrackResult::Win == track.result && clan_id == track.self_clan_id;
+        let rival_win = TrackResult::Lose == track.result && clan_id == track.rival_clan_id;
+        if self_win || rival_win {
             count += 1
         }
     }

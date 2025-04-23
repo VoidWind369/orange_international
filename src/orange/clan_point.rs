@@ -47,7 +47,11 @@ impl ClanPoint {
             .await
     }
 
-    pub async fn update_point(&self, pool: &Pool<Postgres>, add: i64) -> Result<PgQueryResult, Error> {
+    pub async fn update_point(
+        &self,
+        pool: &Pool<Postgres>,
+        add: i64,
+    ) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("update orange.clan_point set point = $1, update_time = $2 where clan_id = $3")
             .bind(&self.point + add)
@@ -67,6 +71,13 @@ impl ClanPoint {
             .bind(&self.reward_point + reward_add)
             .bind(now)
             .bind(&self.clan_id)
+            .execute(pool)
+            .await
+    }
+
+    pub async fn delete(pool: &Pool<Postgres>, id: Uuid) -> Result<PgQueryResult, Error> {
+        query("delete from orange.clan_point where clan_id = $1")
+            .bind(id)
             .execute(pool)
             .await
     }
