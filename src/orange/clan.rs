@@ -19,7 +19,7 @@ pub struct Clan {
     update_time: DateTime<Utc>,
     status: Option<i16>,
     pub series_id: Option<Uuid>,
-    is_intel: Option<bool>,
+    is_global: Option<bool>,
 }
 
 impl Clan {
@@ -39,7 +39,7 @@ impl Clan {
         tag: &str,
         is_intel: bool,
     ) -> Result<Self, Error> {
-        query_as("select * from orange.clan where tag = $1 and is_intel = $2")
+        query_as("select * from orange.clan where tag = $1 and is_global = $2")
             .bind(tag)
             .bind(is_intel)
             .fetch_one(pool)

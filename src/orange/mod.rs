@@ -26,7 +26,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/clan", get(clans).post(clan_insert))
         .route("/clan/{id}", get(clan).delete(clan_delete))
-        .route("/clan/{tag}/{is_intel}", get(clan_tag))
+        .route("/clan/{tag}/{is_global}", get(clan_tag))
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
         .route("/track", get(tracks).post(new_track))
@@ -73,17 +73,17 @@ async fn clan(
 async fn clan_tag(
     State(app_state): State<AppState>,
     AuthBearer(token): AuthBearer,
-    Path((tag, is_intel)): Path<(String, bool)>,
+    Path((tag, is_global)): Path<(String, bool)>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
     if !token.eq("cfa*clan*select") {
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
-    log_info!("Clan {} {}", &tag, is_intel);
+    log_info!("Clan {} {}", &tag, is_global);
     let tag = format!("#{tag}").to_uppercase();
 
-    if let Ok(clan) = Clan::select_tag(&app_state.pool, &tag, is_intel).await {
+    if let Ok(clan) = Clan::select_tag(&app_state.pool, &tag, is_global).await {
         log_info!("{:?}", clan);
         (StatusCode::OK, Json(clan))
     } else {
