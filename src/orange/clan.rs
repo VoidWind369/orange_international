@@ -40,7 +40,7 @@ impl Clan {
         tag: &str,
         is_intel: bool,
     ) -> Result<Self, Error> {
-        query_as("select * from orange.clan where tag = $1 and is_global = $2")
+        query_as("select * from orange.clan where tag = $1 and is_global = $2 and status = 1")
             .bind(tag)
             .bind(is_intel)
             .fetch_one(pool)
