@@ -66,7 +66,7 @@ impl User {
 
     pub async fn update(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
-        query("update public.user set name = $1, email = $2, status = $3, phone = $4, updated_time = $5, where id = $6")
+        query("update public.user set name = $1, email = $2, status = $3, phone = $4, update_time = $5 where id = $6")
             .bind(&self.name)
             .bind(&self.email)
             .bind(&self.status)
@@ -80,7 +80,7 @@ impl User {
     pub async fn update_password(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         let password = self.get_password_hash();
-        query("update public.user set password = $1, set update_time = $2 where id = $3")
+        query("update public.user set password = $1, update_time = $2 where id = $3")
             .bind(password)
             .bind(now)
             .bind(&self.id)
@@ -161,13 +161,13 @@ pub struct UserGroup {
 
 impl UserGroup {
     pub async fn select(&self, pool: &Pool<Postgres>) -> Result<Self, Error> {
-        query_as("select * from orange.user_group where user_id = $1 and group_id = $2")
+        query_as("select * from public.user_group where user_id = $1 and group_id = $2")
             .fetch_one(pool)
             .await
     }
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        query("insert into orange.user_group values ($1, $2)")
+        query("insert into public.user_group values ($1, $2)")
             .bind(self.user_id)
             .bind(self.group_id)
             .execute(pool)
@@ -175,7 +175,7 @@ impl UserGroup {
     }
 
     pub async fn delete(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        query("delete from orange.user_group where user_id = $1 and group_id = $2")
+        query("delete from public.user_group where user_id = $1 and group_id = $2")
             .bind(self.user_id)
             .bind(self.group_id)
             .execute(pool)
@@ -183,62 +183,9 @@ impl UserGroup {
     }
 
     pub async fn delete_user(user_id: Uuid, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        query("delete from orange.user_group where user_id = $1")
+        query("delete from public.user_group where user_id = $1")
             .bind(user_id)
             .execute(pool)
             .await
     }
-}
-
-#[tokio::test]
-async fn test() {
-    let config = Config::get().await;
-    let pool = config.get_database().get().await;
-    let user = User {
-        name: Option::from("管理员1".to_string()),
-        email: Option::from("mzx1@orgvoid.top".to_string()),
-        status: Some(1),
-        code: Option::from("admin1".to_string()),
-        phone: Option::from("".to_string()),
-        password: Option::from("123456".to_string()),
-        ..Default::default()
-    };
-    let a = user.insert(&pool).await.unwrap();
-    log_info!("{}", a.rows_affected())
-}
-
-#[tokio::test]
-async fn test2() {
-    let config = Config::get().await;
-    let pool = config.get_database().get().await;
-    let users = User::select_all(&pool).await.unwrap();
-    log_info!("{:?}", users);
-    for user in users {
-        let a = user.create_time.with_timezone(&Local);
-        let a = a.format("%Y-%m-%d %H:%M:%S").to_string();
-        log_info!("{a} {}", user.get_password_hash())
-    }
-}
-
-#[tokio::test]
-async fn test3() {
-    let config = Config::get().await;
-    let pool = config.get_database().get().await;
-    let users = User {
-        email: Option::from("mzx1@orgvoid.top".to_string()),
-        password: Option::from("123456".to_string()),
-        ..Default::default()
-    };
-    let a = users.verify_login(&pool).await;
-    log_info!("{:?}", a);
-}
-
-#[tokio::test]
-async fn delete() {
-    let config = Config::get().await;
-    let pool = config.get_database().get().await;
-    query("delete from public.user where code = 'admin1'")
-        .execute(&pool)
-        .await
-        .unwrap();
 }
