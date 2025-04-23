@@ -17,7 +17,7 @@ use axum_auth::AuthBearer;
 pub use clan::Clan;
 pub use clan::ClanUser;
 pub use round::Round;
-use serde_json::Value;
+use serde_json::{json, Value};
 pub use track::Track;
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
@@ -30,6 +30,7 @@ pub fn router() -> Router<AppState> {
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
         .route("/track", get(tracks).post(new_track))
+        .route("/track/{id}", get(track_round))
         .route("/user_clans", get(user_clans))
         .route("/user_clans/{id}", get(userid_clans))
         .route("/clan_user", post(insert_cu).delete(delete_cu))
@@ -200,6 +201,22 @@ async fn tracks(
     (StatusCode::OK, Json(res))
 }
 
+async fn track_round(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    let res = Track::select_round(&app_state.pool, id).await.unwrap();
+    (StatusCode::OK, Json(res))
+}
+
 ///
 ///
 /// # New Track
@@ -230,6 +247,14 @@ async fn new_track(
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
+
+    // 检查登记时间
+    let round = Round::select_last(&app_state.pool)
+        .await
+        .unwrap_or_default();
+    if round.check_not_now().await {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json::default());
+    };
 
     // 默认国际服
     let is_intel = if let Some(intel) = data.get("is_intel") {

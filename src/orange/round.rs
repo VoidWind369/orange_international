@@ -17,6 +17,10 @@ impl Round {
         self.id
     }
 
+    pub async fn check_not_now(&self) -> bool {
+        self.round_time > Utc::now()
+    }
+
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as("select * from orange.round").fetch_all(pool).await
     }
