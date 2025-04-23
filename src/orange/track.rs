@@ -10,26 +10,26 @@ use void_log::log_info;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct Track {
-    id: Uuid,
+    pub id: Uuid,
     pub self_clan_id: Uuid,
     pub rival_clan_id: Uuid,
-    self_history_point: i64,
-    rival_history_point: i64,
-    create_time: DateTime<Utc>,
+    pub self_history_point: i64,
+    pub rival_history_point: i64,
+    pub create_time: DateTime<Utc>,
     pub self_now_point: i64,
     pub rival_now_point: i64,
-    round_id: Uuid,
-    result: TrackResult,
-    round_code: Option<String>,
-    self_tag: Option<String>,
-    self_name: Option<String>,
-    rival_tag: Option<String>,
-    rival_name: Option<String>,
+    pub round_id: Uuid,
+    pub result: TrackResult,
+    pub round_code: Option<String>,
+    pub self_tag: Option<String>,
+    pub self_name: Option<String>,
+    pub rival_tag: Option<String>,
+    pub rival_name: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Type, Serialize_repr, Deserialize_repr)]
 #[repr(i16)]
-enum TrackResult {
+pub enum TrackResult {
     Win = 1,
     #[default]
     None = 0,

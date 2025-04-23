@@ -1,6 +1,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use crate::orange::Track;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,5 +34,31 @@ impl MiddleApi {
             .send()
             .await;
         response?.json().await
+    }
+    
+    pub fn check_win(&self, self_tag:&str) -> Track {
+        let my_tag = format!("#{}", self.my_tag.replace("#", ""));
+        let ck = my_tag.eq_ignore_ascii_case(self_tag);
+        if ck {
+            Track {
+                id: Default::default(),
+                self_clan_id: Default::default(),
+                rival_clan_id: Default::default(),
+                self_history_point: 0,
+                rival_history_point: 0,
+                create_time: Default::default(),
+                self_now_point: 0,
+                rival_now_point: 0,
+                round_id: Default::default(),
+                result: Default::default(),
+                round_code: None,
+                self_tag: None,
+                self_name: None,
+                rival_tag: None,
+                rival_name: None,
+            }
+        } else { 
+            Track::default()
+        }
     }
 }
