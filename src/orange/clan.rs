@@ -35,9 +35,9 @@ impl Clan {
     }
 
     pub async fn select_tag(
+        pool: &Pool<Postgres>,
         tag: &str,
         is_intel: bool,
-        pool: &Pool<Postgres>,
     ) -> Result<Self, Error> {
         query_as("select * from orange.clan where tag = $1 and is_intel = $2")
             .bind(tag)

@@ -26,6 +26,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/clan", get(clans).post(clan_insert))
         .route("/clan/{id}", get(clan).delete(clan_delete))
+        .route("/clan/{tag}/{is_intel}", get(clan_tag))
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
         .route("/track", get(tracks).post(new_track))
@@ -67,6 +68,27 @@ async fn clan(
     let res = Clan::select(&app_state.pool, id).await.unwrap();
     log_info!("{:?}", res);
     (StatusCode::OK, Json(res))
+}
+
+async fn clan_tag(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path((tag, is_intel)): Path<(String, bool)>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*clan*select") {
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+    log_info!("Clan {} {}", &tag, is_intel);
+    let tag = format!("#{tag}").to_uppercase();
+
+    if let Ok(clan) = Clan::select_tag(&app_state.pool, &tag, is_intel).await {
+        log_info!("{:?}", clan);
+        (StatusCode::OK, Json(clan))
+    } else {
+        (StatusCode::NOT_FOUND, Json::default())
+    }
 }
 
 async fn clan_insert(
@@ -242,10 +264,10 @@ async fn new_track(
     log_info!("登记1: 获取双方标签 {self_tag} vs {rival_tag}");
 
     // 查询本家加盟状态
-    let self_clan = Clan::select_tag(self_tag, is_intel, &app_state.pool).await;
+    let self_clan = Clan::select_tag(&app_state.pool, self_tag, is_intel).await;
 
     // 查询对家加盟状态
-    let rival_clan = Clan::select_tag(&rival_tag, is_intel, &app_state.pool).await;
+    let rival_clan = Clan::select_tag(&app_state.pool, &rival_tag, is_intel).await;
 
     // 本家积分数据
     let (self_point, has_self_tracks) = if let Ok(ref clan) = self_clan {
@@ -366,10 +388,8 @@ async fn userid_clans(
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
-    
-    let user = User::select(&app_state.pool, id)
-        .await
-        .unwrap_or_default();
+
+    let user = User::select(&app_state.pool, id).await.unwrap_or_default();
     let clans = user.user_clans(&app_state.pool).await.unwrap_or_default();
     (StatusCode::OK, Json(clans))
 }
