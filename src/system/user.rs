@@ -24,7 +24,7 @@ pub struct User {
     #[serde(skip_deserializing)]
     update_time: DateTime<Utc>,
     #[serde(skip_serializing)]
-    password: Option<String>,
+    pub password: Option<String>,
 }
 
 impl User {
@@ -71,6 +71,16 @@ impl User {
             .bind(&self.email)
             .bind(&self.status)
             .bind(&self.phone)
+            .bind(now)
+            .bind(&self.id)
+            .execute(pool)
+            .await
+    }
+    
+    pub async fn update_status(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        let now = Utc::now();
+        query("update public.user set status = $1, update_time = $2 where id = $3")
+            .bind(&self.status)
             .bind(now)
             .bind(&self.id)
             .execute(pool)

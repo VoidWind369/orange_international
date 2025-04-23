@@ -126,7 +126,13 @@ async fn user_update(
     }
     // ********************鉴权********************
 
-    let res = data.update(&app_state.pool).await;
+    let res = if data.password.is_some() {
+        data.update_password(&app_state.pool).await
+    } else if data.status.is_some() { 
+        data.update_status(&app_state.pool).await
+    } else {
+        data.update(&app_state.pool).await
+    };
     let rows_affected = res.unwrap_or_default().rows_affected();
     (StatusCode::OK, Json(rows_affected))
 }

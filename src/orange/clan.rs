@@ -18,7 +18,7 @@ pub struct Clan {
     create_time: DateTime<Utc>,
     #[serde(skip_deserializing)]
     update_time: DateTime<Utc>,
-    status: Option<i16>,
+    pub status: Option<i16>,
     pub series_id: Option<Uuid>,
     is_global: Option<bool>,
 }
@@ -66,12 +66,21 @@ impl Clan {
 
     pub async fn update(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
-        query("update orange.clan set tag = $1, name = $2, updated_time = $3, status = $4, series_id = $5 where id = $6")
+        query("update orange.clan set tag = $1, name = $2, update_time = $3, series_id = $4 where id = $5")
             .bind(&self.tag)
             .bind(&self.name)
             .bind(now)
-            .bind(&self.status)
             .bind(&self.series_id)
+            .bind(&self.id)
+            .execute(pool)
+            .await
+    }
+    
+    pub async fn update_status(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        let now = Utc::now();
+        query("update orange.clan set update_time = $1, status = $2 where id = $3")
+            .bind(now)
+            .bind(&self.status)
             .bind(&self.id)
             .execute(pool)
             .await
@@ -87,10 +96,18 @@ impl Clan {
     }
 
     /// # 接口自动更新
-    pub async fn api_insert(&self, conn: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+    pub async fn api_insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let tag = &self.tag.clone().unwrap_or_default();
         let clan = api::Clan::get(tag).await.api_to_orange();
-        clan.insert(conn).await
+        clan.insert(pool).await
+    }
+    
+    pub async fn api_update(&mut self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        let tag = &self.tag.clone().unwrap_or_default();
+        let clan = api::Clan::get(tag).await.api_to_orange();
+        self.tag = clan.tag;
+        self.name = clan.name;
+        self.update(pool).await
     }
 }
 

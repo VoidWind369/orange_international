@@ -17,14 +17,14 @@ use axum_auth::AuthBearer;
 pub use clan::Clan;
 pub use clan::ClanUser;
 pub use round::Round;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 pub use track::Track;
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/clan", get(clans).post(clan_insert))
+        .route("/clan", get(clans).post(clan_insert).put(clan_update))
         .route("/clan/{id}", get(clan).delete(clan_delete))
         .route("/clan/{tag}/{is_global}", get(clan_tag))
         .route("/round", get(rounds).post(round_insert))
@@ -113,7 +113,33 @@ async fn clan_insert(
     };
 
     let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected as i64))
+    (StatusCode::OK, Json(rows_affected))
+}
+
+async fn clan_update(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    headers: HeaderMap,
+    Json(data): Json<Clan>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    let res = if data.status.is_some() { 
+        data.update_status(&app_state.pool).await
+    } else if headers.get("Auto").is_some() {
+        // 是否自动
+        data.api_insert(&app_state.pool).await
+    }  else {
+        data.update(&app_state.pool).await
+    };
+
+    let rows_affected = res.unwrap_or_default().rows_affected();
+    (StatusCode::OK, Json(rows_affected))
 }
 
 async fn clan_delete(
