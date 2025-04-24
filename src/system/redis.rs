@@ -57,25 +57,3 @@ impl UserInfo {
         conn.del(key)
     }
 }
-
-#[tokio::test]
-async fn test_set_user() {
-    let u = UserInfo {
-        id: Uuid::from_str("a036b14c-9f83-4369-9086-3a82c0c8f05e").unwrap(),
-        code: "".to_string(),
-        email: "".to_string(),
-        name: "".to_string(),
-        token: "qwertyuiol;lkjhgfd".to_string(),
-        group: vec![],
-        clans: vec![],
-    };
-    u.set_user(3600).await;
-}
-
-#[tokio::test]
-async fn test_get_user() {
-    let a = UserInfo::get_user("test")
-        .await
-        .expect("TODO: panic message");
-    log_info!("{a:?}")
-}

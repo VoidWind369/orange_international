@@ -30,7 +30,7 @@ impl MiddleApi {
             "isGlobal": is_global,
         });
         let response = Client::new()
-            .post("https://api.middleinity.app/api")
+            .post("http://cocbzlm.com:8422/api/wardecider")
             .header("isAdmin", "true")
             .json(&body)
             .send()

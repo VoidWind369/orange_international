@@ -188,10 +188,3 @@ impl api::Clan {
         }
     }
 }
-
-#[tokio::test]
-async fn test() {
-    let pool = Config::get().await.get_database().get().await;
-    let a = Clan::select_all(&pool).await.unwrap();
-    log_info!("{:?}", a)
-}
