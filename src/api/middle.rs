@@ -5,6 +5,7 @@ use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 use void_log::log_info;
 use crate::orange::{Clan, Track, TrackResult};
+use crate::util;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,6 +48,8 @@ impl MiddleApi {
 
         // 格式化输赢tag
         let win_tag = format!("#{}", self.win_tag.replace("#", ""));
+        
+        log_info!("opp_tag: {opp_tag} | win_tag: {win_tag} | is_global: {is_global}");
 
         // 查询对家在数据库记录,没有就新增
         let opp_clan = if let Ok(oc) = Clan::select_tag(pool, &opp_tag, 9, is_global).await {
@@ -84,4 +87,11 @@ impl MiddleApi {
         // 返回Track
         track
     }
+}
+
+#[tokio::test]
+async fn test_win() {
+    let pool = util::Config::get().await.get_database().get().await;
+    let clan = Clan::select_tag(&pool, "#2GUJUUUUU", 9, true).await.unwrap();
+    log_info!("<UNK>: {:?}", clan);
 }
