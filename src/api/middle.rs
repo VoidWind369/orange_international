@@ -10,7 +10,7 @@ use crate::util;
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MiddleApi {
-    my_tag: Option<String>,
+    my_tag: String,
     my_name: Option<String>,
     opp_tag: String,
     opp_name: Option<String>,
@@ -43,21 +43,21 @@ impl MiddleApi {
     }
     
     pub async fn check_win(&self, pool: &Pool<Postgres>, mut track: Track, is_global: bool) -> Track {
-        // 格式化对方tag
-        let opp_tag = format!("#{}", self.opp_tag.replace("#", ""));
+        // 格式化对方tag(不战反转了my_tag)
+        let rival_tag = format!("#{}", self.my_tag.replace("#", ""));
 
         // 格式化输赢tag
         let win_tag = format!("#{}", self.win_tag.replace("#", ""));
         
-        log_info!("opp_tag: {opp_tag} | win_tag: {win_tag} | is_global: {is_global}");
+        log_info!("rival_tag: {rival_tag} | win_tag: {win_tag} | is_global: {is_global}");
 
         // 查询对家在数据库记录,没有就新增
-        let opp_clan = if let Ok(oc) = Clan::select_tag(pool, &opp_tag, 9, is_global).await {
+        let opp_clan = if let Ok(oc) = Clan::select_tag(pool, &rival_tag, 9, is_global).await {
             log_info!("合作有缓存: {}", oc.name.clone().unwrap());
             oc
         } else {
             let clan = Clan {
-                tag: Some(opp_tag.clone()),
+                tag: Some(rival_tag.clone()),
                 name: self.opp_name.clone(),
                 status: Some(9),
                 series_id: Some(Uuid::parse_str("4fc2832d-cf1f-47e0-9b54-6c35937c73a4").unwrap()),
@@ -65,7 +65,7 @@ impl MiddleApi {
             };
             let insert_res = clan.insert(pool).await.unwrap();
             log_info!("新增合作盟: {}", insert_res.rows_affected());
-            let opp_clan = Clan::select_tag(pool, &opp_tag, 9, is_global).await;
+            let opp_clan = Clan::select_tag(pool, &rival_tag, 9, is_global).await;
             opp_clan.unwrap()
         };
 
