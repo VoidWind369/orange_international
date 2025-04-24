@@ -8,7 +8,7 @@ use crate::orange::{Clan, Track, TrackResult};
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MiddleApi {
-    my_tag: String,
+    my_tag: Option<String>,
     my_name: Option<String>,
     opp_tag: String,
     opp_name: Option<String>,
@@ -39,9 +39,11 @@ impl MiddleApi {
     }
     
     pub async fn check_win(&self, pool: &Pool<Postgres>, mut track: Track, is_global: bool) -> Track {
-        // 格式化双方tag
-        let my_tag = format!("#{}", self.my_tag.replace("#", ""));
+        // 格式化对方tag
         let opp_tag = format!("#{}", self.opp_tag.replace("#", ""));
+        
+        // 格式化输赢tag
+        let win_tag = format!("#{}", self.win_tag.replace("#", ""));
 
         // 查询对家在数据库记录,没有就新增
         let opp_clan = if let Ok(oc) = Clan::select_tag(pool, &opp_tag, 9, is_global).await {
@@ -65,11 +67,12 @@ impl MiddleApi {
         track.rival_name = opp_clan.name;
 
         // 判断输赢写入Track
-        if let Some(mct) = track.self_tag.as_ref() {
-            if my_tag.eq(mct) {
-                track.result = TrackResult::Win;
-            } else {
+        if let Some(rct) = track.rival_tag.as_ref() {
+            if win_tag.eq(rct) {
                 track.result = TrackResult::Lose;
+            } else {
+                track.result = TrackResult::Win;
+                track.self_tag = Option::from(win_tag);
             };
         } else { track.result = TrackResult::None; };
 
