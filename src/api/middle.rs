@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
+use void_log::log_info;
 use crate::orange::{Clan, Track, TrackResult};
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -43,7 +44,7 @@ impl MiddleApi {
     pub async fn check_win(&self, pool: &Pool<Postgres>, mut track: Track, is_global: bool) -> Track {
         // 格式化对方tag
         let opp_tag = format!("#{}", self.opp_tag.replace("#", ""));
-        
+
         // 格式化输赢tag
         let win_tag = format!("#{}", self.win_tag.replace("#", ""));
 
@@ -58,7 +59,8 @@ impl MiddleApi {
                 series_id: Some(Uuid::parse_str("4fc2832d-cf1f-47e0-9b54-6c35937c73a4").unwrap()),
                 ..Default::default()
             };
-            clan.insert(pool).await.unwrap();
+            let insert_res = clan.insert(pool).await.unwrap();
+            log_info!("新增合作盟: {}", insert_res.rows_affected());
             let opp_clan = Clan::select_tag(pool, &opp_tag, 9, is_global).await;
             opp_clan.unwrap()
         };
