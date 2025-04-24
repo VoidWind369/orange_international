@@ -3,9 +3,7 @@ use crate::system::{Group, User};
 use crate::util::Config;
 use redis::{Commands, RedisResult, Value};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use uuid::Uuid;
-use void_log::log_info;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct UserInfo {

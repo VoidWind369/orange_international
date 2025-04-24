@@ -1,3 +1,6 @@
+use argon2::{Argon2, PasswordHasher};
+use argon2::password_hash::rand_core::OsRng;
+use argon2::password_hash::SaltString;
 use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -21,6 +24,7 @@ pub fn router() -> Router<AppState> {
         .route("/login", head(check_online).post(login).delete(logout))
         .route("/user", get(users).post(user_insert).put(user_update))
         .route("/user/{id}", get(user).delete(user_delete))
+        .route("/get_password/{password}", get(password))
 }
 
 async fn login(
@@ -152,4 +156,14 @@ async fn user_delete(
     let res = User::delete(&app_state.pool, id).await;
     let rows_affected = res.unwrap_or_default().rows_affected();
     (StatusCode::OK, Json(rows_affected))
+}
+
+async fn password(Path(password): Path<String>) -> impl IntoResponse {
+    // 密码Hash加密
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    argon2
+        .hash_password(password.as_bytes(), &salt)
+        .unwrap()
+        .to_string()
 }

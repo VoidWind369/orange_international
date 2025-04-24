@@ -7,6 +7,7 @@ use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
 use uuid::Uuid;
 use void_log::log_info;
+use crate::api::MiddleApi;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct Track {
@@ -41,6 +42,8 @@ impl Track {
         pool: &Pool<Postgres>,
         self_clan_point: Option<ClanPoint>,
         rival_clan_point: Option<ClanPoint>,
+        self_tag: &str,
+        is_global: bool,
     ) -> Self {
         let round = Round::select_last(pool).await.unwrap_or_default();
 
@@ -57,11 +60,12 @@ impl Track {
             ..Default::default()
         };
 
-        // Track Failed
+        // ****************Track Failed 调用中间库****************
         if track.self_clan_id == Uuid::default() || track.rival_clan_id == Uuid::default() {
-            track.result = TrackResult::None;
-            return track;
+            let ma = MiddleApi::new(self_tag, is_global).await.unwrap();
+            return ma.check_win(pool, track, is_global).await;
         }
+        // ****************Track Failed 调用中间库****************
 
         // 先手先用奖惩
         if scp.reward_point > 0 {

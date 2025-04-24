@@ -1,7 +1,6 @@
 use crate::api;
 use crate::orange::clan_point::ClanPoint;
 use crate::system::User;
-use crate::util::Config;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
@@ -15,12 +14,12 @@ pub struct Clan {
     pub tag: Option<String>,
     pub name: Option<String>,
     #[serde(skip_deserializing)]
-    create_time: DateTime<Utc>,
+    pub create_time: DateTime<Utc>,
     #[serde(skip_deserializing)]
-    update_time: DateTime<Utc>,
+    pub update_time: DateTime<Utc>,
     pub status: Option<i16>,
     pub series_id: Option<Uuid>,
-    is_global: Option<bool>,
+    pub is_global: Option<bool>,
 }
 
 impl Clan {
@@ -38,11 +37,13 @@ impl Clan {
     pub async fn select_tag(
         pool: &Pool<Postgres>,
         tag: &str,
-        is_intel: bool,
+        status: i16,
+        is_global: bool,
     ) -> Result<Self, Error> {
-        query_as("select * from orange.clan where tag = $1 and is_global = $2 and status = 1")
+        query_as("select * from orange.clan where tag = $1 and is_global = $2 and status = $3")
             .bind(tag)
-            .bind(is_intel)
+            .bind(is_global)
+            .bind(status)
             .fetch_one(pool)
             .await
     }

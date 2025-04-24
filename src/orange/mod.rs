@@ -4,10 +4,10 @@ mod round;
 mod series;
 mod track;
 
-use crate::AppState;
 use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
 use crate::system::{User, UserInfo};
+use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -17,8 +17,8 @@ use axum_auth::AuthBearer;
 pub use clan::Clan;
 pub use clan::ClanUser;
 pub use round::Round;
-use serde_json::{Value, json};
-pub use track::Track;
+use serde_json::Value;
+pub use track::*;
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
 
@@ -84,7 +84,7 @@ async fn clan_tag(
     log_info!("Clan {} {}", &tag, is_global);
     let tag = format!("#{tag}").to_uppercase();
 
-    if let Ok(clan) = Clan::select_tag(&app_state.pool, &tag, is_global).await {
+    if let Ok(clan) = Clan::select_tag(&app_state.pool, &tag, 1, is_global).await {
         log_info!("{:?}", clan);
         (StatusCode::OK, Json(clan))
     } else {
@@ -283,8 +283,8 @@ async fn new_track(
     };
 
     // 默认国际服
-    let is_intel = if let Some(intel) = data.get("is_intel") {
-        intel.as_bool().unwrap_or(true)
+    let is_global = if let Some(global) = data.get("is_global") {
+        global.as_bool().unwrap_or(true)
     } else {
         true
     };
@@ -296,7 +296,7 @@ async fn new_track(
     let rival_tag = if let Some(tag) = data.get("rival_tag") {
         log_info!("手动登记");
         tag.as_str().unwrap_or_default().to_string()
-    } else if is_intel {
+    } else if is_global {
         log_info!("国际服自动登记");
         // 查对面标签
         let war = War::get(self_tag).await;
@@ -315,10 +315,10 @@ async fn new_track(
     log_info!("登记1: 获取双方标签 {self_tag} vs {rival_tag}");
 
     // 查询本家加盟状态
-    let self_clan = Clan::select_tag(&app_state.pool, self_tag, is_intel).await;
+    let self_clan = Clan::select_tag(&app_state.pool, self_tag, 1, is_global).await;
 
     // 查询对家加盟状态
-    let rival_clan = Clan::select_tag(&app_state.pool, &rival_tag, is_intel).await;
+    let rival_clan = Clan::select_tag(&app_state.pool, &rival_tag, 1, is_global).await;
 
     // 本家积分数据
     let (self_point, has_self_tracks) = if let Ok(ref clan) = self_clan {
@@ -367,7 +367,7 @@ async fn new_track(
     }
 
     // 添加Track获取输赢（本盟/中间库）
-    let track = Track::new(&app_state.pool, self_point, rival_point).await;
+    let track = Track::new(&app_state.pool, self_point, rival_point, self_tag, is_global).await;
 
     // 添加track记录（数据库Unique限制重复）
     let track_res = if let Ok(qr) = track.insert(&app_state.pool).await {
