@@ -63,7 +63,7 @@ impl Track {
         // ****************Track Failed 调用中间库****************
         if track.self_clan_id == Uuid::default() || track.rival_clan_id == Uuid::default() {
             let ma = MiddleApi::new(self_tag, is_global).await.unwrap();
-            return ma.check_win(pool, track, is_global).await;
+            return ma.check_win(pool, track, is_global, self_tag).await;
         }
         // ****************Track Failed 调用中间库****************
 

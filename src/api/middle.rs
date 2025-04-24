@@ -42,9 +42,15 @@ impl MiddleApi {
         response?.json().await
     }
     
-    pub async fn check_win(&self, pool: &Pool<Postgres>, mut track: Track, is_global: bool) -> Track {
-        // 格式化对方tag(不战反转了my_tag)
-        let rival_tag = format!("#{}", self.my_tag.replace("#", ""));
+    pub async fn check_win(&self, pool: &Pool<Postgres>, mut track: Track, is_global: bool, self_tag: &str) -> Track {
+        // 格式化对方tag(不战可能反转了my_tag)
+        let my_tag = format!("#{}", self.my_tag.replace("#", ""));
+        let opp_tag = format!("#{}", self.opp_tag.replace("#", ""));
+        let rival_tag = if my_tag.eq(self_tag) { 
+            opp_tag
+        }  else {
+            my_tag
+        };
 
         // 格式化输赢tag
         let win_tag = format!("#{}", self.win_tag.replace("#", ""));
