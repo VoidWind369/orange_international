@@ -144,7 +144,7 @@ impl User {
     pub async fn verify_login(&self, pool: &Pool<Postgres>) -> Option<UserInfo> {
         // 查用户
         let data_user =
-            query_as::<_, User>("select * from public.user where email = $1 or code = $1")
+            query_as::<_, User>("select * from public.user where (email = $1 or code = $1) and status = 1")
                 .bind(&self.email)
                 .fetch_one(pool)
                 .await
