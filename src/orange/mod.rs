@@ -359,7 +359,7 @@ async fn new_track(
     };
 
     // 本轮已登记直接返回
-    if let Ok(track) = Track::select_registered(&app_state.pool, &self_point, &rival_point).await {
+    if let Ok(track) = Track::select_registered(&app_state.pool, &self_point, &round).await {
         log_info!("已登记 {:?}", track);
         return (StatusCode::OK, Json(track));
     };

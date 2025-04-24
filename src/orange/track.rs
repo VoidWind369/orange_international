@@ -158,23 +158,16 @@ impl Track {
     pub async fn select_registered(
         pool: &Pool<Postgres>,
         self_clan_point: &Option<ClanPoint>,
-        rival_clan_point: &Option<ClanPoint>,
+        round: &Round,
     ) -> Result<Self, Error> {
         let sc = if let Some(scp) = self_clan_point {
             scp
         } else {
             return Err(Error::ColumnNotFound("Not Found".to_string()));
         };
-
-        let rc = if let Some(rcp) = rival_clan_point {
-            rcp
-        } else {
-            return Err(Error::ColumnNotFound("Not Found".to_string()));
-        };
         log_info!("Track: Self Point{sc:?}");
-        log_info!("Track: Rival Point{rc:?}");
-        query_as("select ot.*, r.code round_code, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.round r, orange.clan c1, orange.clan c2 where ot.round_id = r.id and ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and ((self_clan_id = $1 and rival_clan_id = $2) or (rival_clan_id = $1 and self_clan_id = $2))")
-            .bind(sc.clan_id).bind(rc.clan_id).fetch_one(pool).await
+        query_as("select ot.*, r.code round_code, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.round r, orange.clan c1, orange.clan c2 where ot.round_id = r.id and ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and (self_clan_id = $1 or rival_clan_id = $1) and round_id = $2")
+            .bind(sc.clan_id).bind(round.get_id()).fetch_one(pool).await
     }
 
     pub async fn select_desc_limit(
