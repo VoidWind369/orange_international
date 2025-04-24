@@ -50,6 +50,7 @@ impl MiddleApi {
 
         // 查询对家在数据库记录,没有就新增
         let opp_clan = if let Ok(oc) = Clan::select_tag(pool, &opp_tag, 9, is_global).await {
+            log_info!("合作有缓存: {}", oc.name.clone().unwrap());
             oc
         } else {
             let clan = Clan {
