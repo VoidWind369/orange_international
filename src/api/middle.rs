@@ -53,7 +53,7 @@ impl MiddleApi {
             oc
         } else {
             let clan = Clan {
-                tag: Some(self.opp_tag.clone()),
+                tag: Some(opp_tag.clone()),
                 name: self.opp_name.clone(),
                 status: Some(9),
                 series_id: Some(Uuid::parse_str("4fc2832d-cf1f-47e0-9b54-6c35937c73a4").unwrap()),
