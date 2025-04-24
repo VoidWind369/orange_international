@@ -43,8 +43,7 @@ async fn clans(
     AuthBearer(token): AuthBearer,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if let Err(e) = UserInfo::get_user(&token).await {
-        log_warn!("UNAUTHORIZED {e}");
+    if !token.eq("cfa*clan*select") {
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
