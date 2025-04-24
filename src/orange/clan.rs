@@ -24,7 +24,7 @@ pub struct Clan {
 
 impl Clan {
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as("select * from orange.clan").fetch_all(pool).await
+        query_as("select * from orange.clan where status >= 1 and status <= 3").fetch_all(pool).await
     }
 
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
