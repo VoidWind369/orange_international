@@ -11,6 +11,7 @@ pub struct Config {
     database: Option<ConfigDatabase>,
     redis: Option<ConfigDatabase>,
     coc_api: Option<ConfigApi>,
+    middle: Option<ConfigApi>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -116,5 +117,11 @@ impl ConfigDatabase {
             Client::open(self.url.unwrap_or("redis://127.0.0.1/".parse().unwrap())).unwrap();
         let pool = r2d2::Pool::builder().build(client).unwrap();
         pool.get().unwrap()
+    }
+}
+
+impl ConfigApi {
+    pub fn set_url(&self, path: &str) -> String {
+        format!("{}/{path}", &self.url.clone().unwrap_or_default())
     }
 }

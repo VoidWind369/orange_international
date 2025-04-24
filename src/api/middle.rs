@@ -9,12 +9,12 @@ use crate::orange::{Clan, Track, TrackResult};
 #[serde(rename_all = "camelCase")]
 pub struct MiddleApi {
     my_tag: String,
-    my_name: String,
+    my_name: Option<String>,
     opp_tag: String,
-    opp_name: String,
+    opp_name: Option<String>,
     match_type: Value,
     win_tag: String,
-    win_name: String,
+    win_name: Option<String>,
     explain_ch: Option<String>,
     explain_en: Option<String>,
     email: Option<String>,
@@ -49,7 +49,7 @@ impl MiddleApi {
         } else {
             let clan = Clan {
                 tag: Some(self.opp_tag.clone()),
-                name: Some(self.opp_name.clone()),
+                name: self.opp_name.clone(),
                 status: Some(9),
                 series_id: Some(Uuid::parse_str("4fc2832d-cf1f-47e0-9b54-6c35937c73a4").unwrap()),
                 ..Default::default()
