@@ -92,6 +92,6 @@ impl MiddleApi {
 #[tokio::test]
 async fn test_win() {
     let pool = util::Config::get().await.get_database().get().await;
-    let clan = Clan::select_tag(&pool, "#2GUJUUUUU", 9, true).await.unwrap();
+    let clan = Clan::select_tag(&pool, "#YL8GUU0Q", 9, true).await.unwrap();
     log_info!("<UNK>: {:?}", clan);
 }
