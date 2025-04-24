@@ -12,10 +12,12 @@ pub struct MiddleApi {
     my_name: Option<String>,
     opp_tag: String,
     opp_name: Option<String>,
-    match_type: Value,
+    match_type: Option<String>,
     win_tag: String,
     win_name: Option<String>,
+    #[serde(rename = "explain_ch")]
     explain_ch: Option<String>,
+    #[serde(rename = "explain_en")]
     explain_en: Option<String>,
     email: Option<String>,
     match_strategy: Option<String>,
