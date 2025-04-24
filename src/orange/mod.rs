@@ -4,10 +4,10 @@ mod round;
 mod series;
 mod track;
 
+use crate::AppState;
 use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
 use crate::system::{User, UserInfo};
-use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -129,12 +129,16 @@ async fn clan_update(
     }
     // ********************鉴权********************
 
-    let res = if data.status.is_some() { 
+    log_info!("{:?}", data);
+    let res = if data.status.is_some() {
+        log_info!("update status");
         data.update_status(&app_state.pool).await
     } else if headers.get("Auto").is_some() {
+        log_info!("auto update clan");
         // 是否自动
         data.api_insert(&app_state.pool).await
-    }  else {
+    } else {
+        log_info!("update clan");
         data.update(&app_state.pool).await
     };
 
@@ -367,7 +371,14 @@ async fn new_track(
     }
 
     // 添加Track获取输赢（本盟/中间库）
-    let track = Track::new(&app_state.pool, self_point, rival_point, self_tag, is_global).await;
+    let track = Track::new(
+        &app_state.pool,
+        self_point,
+        rival_point,
+        self_tag,
+        is_global,
+    )
+    .await;
 
     // 添加track记录（数据库Unique限制重复）
     let track_res = if let Ok(qr) = track.insert(&app_state.pool).await {
