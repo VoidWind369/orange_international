@@ -46,10 +46,10 @@ impl MiddleApi {
         // 格式化对方tag(不战可能反转了my_tag)
         let my_tag = format!("#{}", self.my_tag.replace("#", ""));
         let opp_tag = format!("#{}", self.opp_tag.replace("#", ""));
-        let rival_tag = if my_tag.eq(self_tag) { 
-            opp_tag
+        let (rival_tag, rival_name) = if my_tag.eq(self_tag) {
+            (opp_tag, self.opp_name.clone())
         }  else {
-            my_tag
+            (my_tag, self.my_name.clone())
         };
 
         // 格式化输赢tag
@@ -64,7 +64,7 @@ impl MiddleApi {
         } else {
             let clan = Clan {
                 tag: Some(rival_tag.clone()),
-                name: self.opp_name.clone(),
+                name: rival_name,
                 status: Some(9),
                 series_id: Some(Uuid::parse_str("4fc2832d-cf1f-47e0-9b54-6c35937c73a4").unwrap()),
                 ..Default::default()
