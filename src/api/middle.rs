@@ -46,10 +46,10 @@ impl MiddleApi {
         // 格式化对方tag(不战可能反转了my_tag)
         let my_tag = format!("#{}", self.my_tag.replace("#", ""));
         let opp_tag = format!("#{}", self.opp_tag.replace("#", ""));
-        let (rival_tag, rival_name) = if my_tag.eq(self_tag) {
-            (opp_tag, self.opp_name.clone())
+        let (rival_tag, rival_name, self_name) = if my_tag.eq(self_tag) {
+            (opp_tag, self.opp_name.clone(), self.my_name.clone())
         }  else {
-            (my_tag, self.my_name.clone())
+            (my_tag, self.my_name.clone(), self.opp_name.clone())
         };
 
         // 格式化输赢tag
@@ -58,9 +58,9 @@ impl MiddleApi {
         log_info!("rival_tag: {rival_tag} | win_tag: {win_tag} | is_global: {is_global}");
 
         // 查询对家在数据库记录,没有就新增
-        let opp_clan = if let Ok(oc) = Clan::select_tag(pool, &rival_tag, 9, is_global).await {
-            log_info!("合作有缓存: {}", oc.name.clone().unwrap());
-            oc
+        let rival_clan = if let Ok(rc) = Clan::select_tag(pool, &rival_tag, 9, is_global).await {
+            log_info!("合作有缓存: {}", rc.name.clone().unwrap());
+            rc
         } else {
             let clan = Clan {
                 tag: Some(rival_tag.clone()),
@@ -76,17 +76,21 @@ impl MiddleApi {
         };
 
         // 组装Track
-        track.rival_clan_id = opp_clan.id.unwrap();
-        track.rival_tag = opp_clan.tag;
-        track.rival_name = opp_clan.name;
+        track.rival_clan_id = rival_clan.id.unwrap();
+        track.rival_tag = rival_clan.tag;
+        track.rival_name = rival_clan.name;
+        
+        track.self_tag = Some(self_tag.to_string());
+        track.self_name = self_name;
 
         // 判断输赢写入Track
         if let Some(rct) = track.rival_tag.as_ref() {
             if win_tag.eq(rct) {
                 track.result = TrackResult::Lose;
+            } else if self.err {
+                track.result = TrackResult::None;
             } else {
                 track.result = TrackResult::Win;
-                track.self_tag = Option::from(win_tag);
             };
         } else { track.result = TrackResult::None; };
 

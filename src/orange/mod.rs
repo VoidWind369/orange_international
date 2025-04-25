@@ -43,7 +43,8 @@ async fn clans(
     AuthBearer(token): AuthBearer,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if !token.eq("cfa*clan*select") {
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
@@ -292,8 +293,15 @@ async fn new_track(
         true
     };
 
+    // 获取先后手
+    let last = if let Some(l) = data.get("last") {
+        l.as_bool().unwrap_or_default()
+    } else {
+        false
+    };
+
     // 获取本家标签
-    let self_tag = data["self_tag"].as_str().unwrap_or_default();
+    let self_tag = data["self_tag"].as_str().unwrap_or_default().to_string();
 
     // 获取对家标签
     let rival_tag = if let Some(tag) = data.get("rival_tag") {
@@ -302,7 +310,7 @@ async fn new_track(
     } else if is_global {
         log_info!("国际服自动登记");
         // 查对面标签
-        let war = War::get(self_tag).await;
+        let war = War::get(&self_tag).await;
         if let Some(opponent_clan_tag) = war.opponent.unwrap().tag {
             opponent_clan_tag
         } else {
@@ -315,10 +323,16 @@ async fn new_track(
         return (StatusCode::INTERNAL_SERVER_ERROR, Json::default());
     };
 
+    let (self_tag, rival_tag) = if last {
+        (rival_tag, self_tag)
+    } else {
+        (self_tag, rival_tag)
+    };
+
     log_info!("登记1: 获取双方标签 {self_tag} vs {rival_tag}");
 
     // 查询本家加盟状态
-    let self_clan = Clan::select_tag(&app_state.pool, self_tag, 1, is_global).await;
+    let self_clan = Clan::select_tag(&app_state.pool, &self_tag, 1, is_global).await;
 
     // 查询对家加盟状态
     let rival_clan = Clan::select_tag(&app_state.pool, &rival_tag, 1, is_global).await;
@@ -374,10 +388,10 @@ async fn new_track(
         &app_state.pool,
         self_point,
         rival_point,
-        self_tag,
+        &self_tag,
         is_global,
     )
-    .await;
+        .await;
 
     // 添加track记录（数据库Unique限制重复）
     let track_res = if let Ok(qr) = track.insert(&app_state.pool).await {
