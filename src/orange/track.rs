@@ -1,3 +1,4 @@
+use crate::api::MiddleApi;
 use crate::orange::Round;
 use crate::orange::clan_point::ClanPoint;
 use chrono::{DateTime, Utc};
@@ -7,7 +8,6 @@ use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
 use uuid::Uuid;
 use void_log::log_info;
-use crate::api::MiddleApi;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct Track {
@@ -35,6 +35,26 @@ pub enum TrackResult {
     #[default]
     None = 0,
     Lose = -1,
+}
+
+fn sql(sql_text: &str) -> String {
+    let base_sql = "SELECT
+            ot.*,
+            r.code round_code,
+            c1.tag self_tag,
+            c1.NAME self_name,
+            c2.tag rival_tag,
+            c2.NAME rival_name 
+        FROM
+            orange.track ot,
+            orange.round r,
+            orange.clan c1,
+            orange.clan c2 
+        WHERE
+            ot.round_id = r.\"id\" 
+            AND ot.self_clan_id = c1.\"id\"
+            AND ot.rival_clan_id = c2.\"id\"";
+    format!("{base_sql} {sql_text}")
 }
 
 impl Track {
@@ -152,7 +172,7 @@ impl Track {
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as("select ot.*, r.code round_code, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.round r, orange.clan c1, orange.clan c2 where ot.round_id = r.id and self_clan_id = c1.id and ot.rival_clan_id = c2.id order by create_time desc").fetch_all(pool).await
+        query_as(&sql("order by create_time desc")).fetch_all(pool).await
     }
 
     pub async fn select_registered(
@@ -166,7 +186,7 @@ impl Track {
             return Err(Error::ColumnNotFound("Not Found".to_string()));
         };
         log_info!("Track: Self Point{sc:?}");
-        query_as("select ot.*, r.code round_code, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.round r, orange.clan c1, orange.clan c2 where ot.round_id = r.id and ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and (self_clan_id = $1 or rival_clan_id = $1) and round_id = $2")
+        query_as(&sql("and (self_clan_id = $1 or rival_clan_id = $1) and round_id = $2"))
             .bind(sc.clan_id).bind(round.get_id()).fetch_one(pool).await
     }
 
@@ -175,7 +195,7 @@ impl Track {
         clan_id: Uuid,
         limit: i64,
     ) -> Result<Vec<Self>, Error> {
-        query_as("select ot.*, r.code round_code, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.round r, orange.clan c1, orange.clan c2 where ot.round_id = r.id and ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and self_clan_id = $1 or rival_clan_id = $1 order by create_time desc limit $2")
+        query_as(&sql("and (self_clan_id = $1 or rival_clan_id = $1) order by create_time desc limit $2"))
             .bind(clan_id)
             .bind(limit)
             .fetch_all(pool)
@@ -184,7 +204,7 @@ impl Track {
 
     pub async fn select_round(pool: &Pool<Postgres>, clan_id: Uuid) -> Result<Vec<Self>, Error> {
         let round = Round::select_last(pool).await.unwrap_or_default();
-        query_as("select ot.*, r.code round_code, c1.tag self_tag, c1.name self_name, c2.tag rival_tag, c2.name rival_name from orange.track ot, orange.round r, orange.clan c1, orange.clan c2 where ot.round_id = r.id and ot.self_clan_id = c1.id and ot.rival_clan_id = c2.id and (ot.self_clan_id = $1 or ot.rival_clan_id = $1) and ot.round_id = $2 order by ot.create_time desc limit 1")
+        query_as(&sql("and (ot.self_clan_id = $1 or ot.rival_clan_id = $1) and ot.round_id = $2 order by ot.create_time desc limit 1"))
             .bind(clan_id).bind(round.get_id()).fetch_all(pool).await
     }
 

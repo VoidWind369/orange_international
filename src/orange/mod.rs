@@ -265,7 +265,7 @@ async fn track_round(
     }
     // ********************鉴权********************
 
-    let res = Track::select_round(&app_state.pool, id).await.unwrap();
+    let res = Track::select_desc_limit(&app_state.pool, id, 20).await.unwrap();
     (StatusCode::OK, Json(res))
 }
 
