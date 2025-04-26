@@ -79,9 +79,11 @@ impl MiddleApi {
         track.rival_clan_id = rival_clan.id.unwrap();
         track.rival_tag = rival_clan.tag;
         track.rival_name = rival_clan.name;
+        track.rival_now_point = track.rival_history_point;
         
         track.self_tag = Some(self_tag.to_string());
         track.self_name = self_name;
+        track.self_now_point = track.self_history_point;
 
         // 判断输赢写入Track
         if let Some(rct) = track.rival_tag.as_ref() {
