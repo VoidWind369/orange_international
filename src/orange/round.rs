@@ -40,13 +40,13 @@ impl Round {
             NaiveDateTime::parse_from_str(time_str, "%Y-%m-%dT%H:%M").unwrap()
         };
         let local_time = Local.from_local_datetime(&ndt).single().unwrap();
+        let utc_time = local_time.to_utc().with_timezone(&Utc);
         let code = ndt.format("INTEL%Y%m%d").to_string();
-        let now = Utc::now();
 
         query("insert into orange.round values(DEFAULT, $1, $2, $3)")
             .bind(code)
-            .bind(local_time)
-            .bind(now)
+            .bind(utc_time)
+            .bind(Utc::now())
             .execute(pool)
             .await
     }

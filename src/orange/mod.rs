@@ -25,6 +25,7 @@ use void_log::{log_info, log_warn};
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/clan", get(clans).post(clan_insert).put(clan_update))
+        .route("/clan_search", post(clan_search))
         .route("/clan/{id}", get(clan).delete(clan_delete))
         .route("/clan/{tag}/{is_global}", get(clan_tag))
         .route("/round", get(rounds).post(round_insert))
@@ -43,13 +44,14 @@ async fn clans(
     AuthBearer(token): AuthBearer,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if let Err(e) = UserInfo::get_user(&token).await {
-        log_warn!("UNAUTHORIZED {e}");
+    if !token.eq("cfa*clan*select") {
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
     let res = Clan::select_all(&app_state.pool).await.unwrap();
+
+    // let res = Clan::select_all(&app_state.pool).await.unwrap();
     log_info!("{:?}", res);
     (StatusCode::OK, Json(res))
 }
@@ -85,6 +87,26 @@ async fn clan_tag(
     let tag = format!("#{tag}").to_uppercase();
 
     if let Ok(clan) = Clan::select_tag(&app_state.pool, &tag, 1, is_global).await {
+        log_info!("{:?}", clan);
+        (StatusCode::OK, Json(clan))
+    } else {
+        (StatusCode::NOT_FOUND, Json::default())
+    }
+}
+
+async fn clan_search(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Json(text): Json<String>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*clan*select") {
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    log_info!("Clan {}", &text);
+    if let Ok(clan) = Clan::select_search(&app_state.pool, &text).await {
         log_info!("{:?}", clan);
         (StatusCode::OK, Json(clan))
     } else {
@@ -391,7 +413,7 @@ async fn new_track(
         &self_tag,
         is_global,
     )
-        .await;
+    .await;
 
     // 添加track记录（数据库Unique限制重复）
     let track_res = if let Ok(qr) = track.insert(&app_state.pool).await {

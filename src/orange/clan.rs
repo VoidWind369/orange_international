@@ -24,7 +24,9 @@ pub struct Clan {
 
 impl Clan {
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as("select * from orange.clan where status >= 1 and status <= 3").fetch_all(pool).await
+        query_as("select * from orange.clan where status >= 1 and status <= 3")
+            .fetch_all(pool)
+            .await
     }
 
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
@@ -45,6 +47,14 @@ impl Clan {
             .bind(is_global)
             .bind(status)
             .fetch_one(pool)
+            .await
+    }
+
+    pub async fn select_search(pool: &Pool<Postgres>, text: &str) -> Result<Vec<Self>, Error> {
+        let text = format!("%{text}%");
+        query_as("select * from orange.clan where tag like $1 or name like $1")
+            .bind(text)
+            .fetch_all(pool)
             .await
     }
 
@@ -76,7 +86,7 @@ impl Clan {
             .execute(pool)
             .await
     }
-    
+
     pub async fn update_status(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("update orange.clan set update_time = $1, status = $2 where id = $3")
@@ -102,7 +112,7 @@ impl Clan {
         let clan = api::Clan::get(tag).await.api_to_orange();
         clan.insert(pool).await
     }
-    
+
     pub async fn api_update(&mut self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let tag = &self.tag.clone().unwrap_or_default();
         let clan = api::Clan::get(tag).await.api_to_orange();
