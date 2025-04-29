@@ -42,6 +42,14 @@ impl User {
         query_as("select * from public.user").fetch_all(pool).await
     }
 
+    pub async fn select_search(pool: &Pool<Postgres>, text: &str) -> Result<Vec<Self>, Error> {
+        let text = format!("%{text}%");
+        query_as("select * from public.user where email like $1 or code like $1 or name like $1")
+            .bind(text)
+            .fetch_all(pool)
+            .await
+    }
+
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
         query_as("select * from public.user where id = $1")
             .bind(id)
