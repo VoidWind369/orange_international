@@ -83,7 +83,7 @@ impl Default for ConfigServer {
 
 impl ConfigServer {
     pub fn get_port(&self) -> u16 {
-        self.port.unwrap_or(50000)
+        self.port.unwrap_or(20020)
     }
 
     pub fn _get_url(&self) -> String {
