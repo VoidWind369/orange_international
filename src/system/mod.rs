@@ -1,11 +1,11 @@
-use argon2::{Argon2, PasswordHasher};
-use argon2::password_hash::rand_core::OsRng;
-use argon2::password_hash::SaltString;
 use crate::AppState;
+use argon2::password_hash::SaltString;
+use argon2::password_hash::rand_core::OsRng;
+use argon2::{Argon2, PasswordHasher};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::{get, head};
+use axum::routing::{get, head, post};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 use uuid::Uuid;
@@ -15,6 +15,7 @@ mod group;
 mod redis;
 mod user;
 
+use crate::orange::Clan;
 pub use group::Group;
 pub use redis::UserInfo;
 pub use user::User;
@@ -23,6 +24,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/login", head(check_online).post(login).delete(logout))
         .route("/user", get(users).post(user_insert).put(user_update))
+        .route("/user_search", post(user_search))
         .route("/user/{id}", get(user).delete(user_delete))
         .route("/get_password/{password}", get(password))
 }
@@ -102,6 +104,25 @@ async fn user(
     (StatusCode::OK, Json(res))
 }
 
+async fn user_search(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Json(text): Json<String>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+    if let Ok(user) = User::select_search(&app_state.pool, &text).await {
+        log_info!("{:?}", user);
+        (StatusCode::OK, Json(user))
+    } else {
+        (StatusCode::NOT_FOUND, Json::default())
+    }
+}
+
 async fn user_insert(
     State(app_state): State<AppState>,
     AuthBearer(token): AuthBearer,
@@ -133,7 +154,7 @@ async fn user_update(
 
     let res = if data.password.is_some() {
         data.update_password(&app_state.pool).await
-    } else if data.status.is_some() { 
+    } else if data.status.is_some() {
         data.update_status(&app_state.pool).await
     } else {
         data.update(&app_state.pool).await
