@@ -1,8 +1,7 @@
 use crate::orange::{Clan, Track, TrackResult};
-use crate::util;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::json;
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 use void_log::log_info;
@@ -116,11 +115,4 @@ impl MiddleApi {
         // 返回Track
         track
     }
-}
-
-#[tokio::test]
-async fn test_win() {
-    let pool = util::Config::get().await.get_database().get().await;
-    let clan = Clan::select_tag(&pool, "#YL8GUU0Q", 9, true).await.unwrap();
-    log_info!("<UNK>: {:?}", clan);
 }

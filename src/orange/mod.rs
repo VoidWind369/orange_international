@@ -3,6 +3,7 @@ mod clan_point;
 mod round;
 mod series;
 mod track;
+mod operate_log;
 
 use crate::AppState;
 use crate::api::War;
@@ -24,18 +25,23 @@ use void_log::{log_info, log_warn};
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        // 部落相关
         .route("/clan", get(clans).post(clan_insert).put(clan_update))
         .route("/clan_search", post(clan_search))
         .route("/clan/{id}", get(clan).delete(clan_delete))
         .route("/clan/{tag}/{is_global}", get(clan_tag))
+        // 部落积分相关
+        .route("/clan_point/{id}", get(clan_point))
+        // 时间发布相关
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
+        // 对战记录相关
         .route("/track", get(tracks).post(new_track))
         .route("/track/{id}", get(track_round))
+        // 用户关联相关
         .route("/user_clans", get(user_clans))
         .route("/user_clans/{id}", get(userid_clans))
         .route("/clan_user", post(insert_cu).delete(delete_cu))
-        .route("/clan_point/{id}", get(clan_point))
 }
 
 /// # All Clan

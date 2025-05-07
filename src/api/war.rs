@@ -35,6 +35,7 @@ pub struct WarClan {
     stars: Option<i64>,
     destruction_percentage: Option<f64>,
     members: Option<Vec<WarClanMember>>,
+    exp_earned: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -63,11 +64,7 @@ impl War {
             .await;
         match response {
             Ok(re) => {
-                if let Ok(war) = re.json::<Self>().await {
-                    war
-                } else {
-                    Default::default()
-                }
+                re.json::<Self>().await.unwrap_or_default()
             }
             Err(e) => {
                 log_warn!("War {e}");
