@@ -60,6 +60,7 @@ async fn logout(AuthBearer(token): AuthBearer) -> impl IntoResponse {
 }
 
 async fn check_online(AuthBearer(token): AuthBearer) -> impl IntoResponse {
+    log_info!("check_online: {}", &token);
     // ********************鉴权********************
     if let Err(e) = UserInfo::get_user(&token).await {
         log_warn!("UNAUTHORIZED {e}");
