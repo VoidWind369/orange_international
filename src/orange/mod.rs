@@ -1,14 +1,14 @@
 mod clan;
 mod clan_point;
+mod operate_log;
 mod round;
 mod series;
 mod track;
-mod operate_log;
 
-use crate::AppState;
 use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
 use crate::system::{User, UserInfo};
+use crate::{AppState, api};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -30,6 +30,7 @@ pub fn router() -> Router<AppState> {
         .route("/clan_search", post(clan_search))
         .route("/clan/{id}", get(clan).delete(clan_delete))
         .route("/clan/{tag}/{is_global}", get(clan_tag))
+        .route("/clan/{tag}", get(clan_info))
         // 部落积分相关
         .route("/clan_point/{id}", get(clan_point))
         // 时间发布相关
@@ -98,6 +99,17 @@ async fn clan_tag(
     } else {
         (StatusCode::NOT_FOUND, Json::default())
     }
+}
+
+async fn clan_info(AuthBearer(token): AuthBearer, Path(tag): Path<String>) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*clan*select") {
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+    let tag = format!("#{tag}").to_uppercase();
+    let res = api::Clan::get(&tag).await.info();
+    (StatusCode::OK, Json(res))
 }
 
 async fn clan_search(
@@ -271,7 +283,9 @@ async fn track_round(
     }
     // ********************鉴权********************
 
-    let res = Track::select_desc_limit(&app_state.pool, id, 20).await.unwrap();
+    let res = Track::select_desc_limit(&app_state.pool, id, 20)
+        .await
+        .unwrap();
     (StatusCode::OK, Json(res))
 }
 
