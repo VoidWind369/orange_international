@@ -22,7 +22,7 @@ impl Round {
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as("select * from orange.round").fetch_all(pool).await
+        query_as("select * from orange.round order by create_time desc").fetch_all(pool).await
     }
 
     pub async fn select_last(pool: &Pool<Postgres>) -> Result<Self, Error> {
