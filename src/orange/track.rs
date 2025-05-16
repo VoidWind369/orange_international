@@ -90,14 +90,23 @@ impl Track {
         // 先手先用奖惩
         if scp.reward_point > 0 {
             // 先登记用奖惩
-            track.reward_win(scp, pool).await;
+            track.reward_win(scp, pool, true).await;
+            return track;
+        }
+        if rcp.reward_point < 0 {
+            track.reward_win(rcp, pool, false).await;
             return track;
         }
 
         // 对手奖惩
         if rcp.reward_point > 0 {
             // 先登记用奖惩
-            track.reward_lose(rcp, pool).await;
+            track.reward_lose(rcp, pool, true).await;
+            return track;
+        }
+        if rcp.reward_point < 0 {
+            // 先登记用奖惩
+            track.reward_lose(scp, pool, false).await;
             return track;
         }
 
@@ -157,22 +166,34 @@ impl Track {
         rcp.update_point(pool, 1).await.unwrap();
     }
 
-    async fn reward_win(&mut self, scp: ClanPoint, pool: &Pool<Postgres>) {
+    /// is_reward_point: true传本方
+    async fn reward_win(&mut self, cp: ClanPoint, pool: &Pool<Postgres>, is_reward_point: bool) {
         self.self_now_point = self.self_history_point;
         self.rival_now_point = self.rival_history_point;
         self.result = TrackResult::Win;
-        scp.update_point(pool, -1).await.unwrap();
+        if is_reward_point {
+            cp.update_point(pool, -1).await.unwrap();
+        } else {
+            cp.update_point(pool, 1).await.unwrap();
+        }
     }
 
-    async fn reward_lose(&mut self, rcp: ClanPoint, pool: &Pool<Postgres>) {
+    /// is_reward_point: true传对方
+    async fn reward_lose(&mut self, cp: ClanPoint, pool: &Pool<Postgres>, is_reward_point: bool) {
         self.self_now_point = self.self_history_point;
         self.rival_now_point = self.rival_history_point;
         self.result = TrackResult::Lose;
-        rcp.update_reward_point(pool, -1).await.unwrap();
+        if is_reward_point {
+            cp.update_reward_point(pool, -1).await.unwrap();
+        } else {
+            cp.update_reward_point(pool, 1).await.unwrap();
+        }
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as(&sql("order by create_time desc")).fetch_all(pool).await
+        query_as(&sql("order by create_time desc"))
+            .fetch_all(pool)
+            .await
     }
 
     pub async fn select_registered(
@@ -186,8 +207,13 @@ impl Track {
             return Err(Error::ColumnNotFound("Not Found".to_string()));
         };
         log_info!("Track: Self Point{sc:?}");
-        query_as(&sql("and (self_clan_id = $1 or rival_clan_id = $1) and round_id = $2"))
-            .bind(sc.clan_id).bind(round.get_id()).fetch_one(pool).await
+        query_as(&sql(
+            "and (self_clan_id = $1 or rival_clan_id = $1) and round_id = $2",
+        ))
+        .bind(sc.clan_id)
+        .bind(round.get_id())
+        .fetch_one(pool)
+        .await
     }
 
     pub async fn select_desc_limit(
@@ -195,11 +221,13 @@ impl Track {
         clan_id: Uuid,
         limit: i64,
     ) -> Result<Vec<Self>, Error> {
-        query_as(&sql("and (self_clan_id = $1 or rival_clan_id = $1) order by create_time desc limit $2"))
-            .bind(clan_id)
-            .bind(limit)
-            .fetch_all(pool)
-            .await
+        query_as(&sql(
+            "and (self_clan_id = $1 or rival_clan_id = $1) order by create_time desc limit $2",
+        ))
+        .bind(clan_id)
+        .bind(limit)
+        .fetch_all(pool)
+        .await
     }
 
     pub async fn select_round(pool: &Pool<Postgres>, clan_id: Uuid) -> Result<Vec<Self>, Error> {
