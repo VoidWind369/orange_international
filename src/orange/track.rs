@@ -21,6 +21,7 @@ pub struct Track {
     pub rival_now_point: i64,
     pub round_id: Uuid,
     pub result: TrackResult,
+    pub r#type: TrackType,
     pub round_code: Option<String>,
     pub self_tag: Option<String>,
     pub self_name: Option<String>,
@@ -35,6 +36,18 @@ pub enum TrackResult {
     #[default]
     None = 0,
     Lose = -1,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Type, Serialize_repr, Deserialize_repr)]
+#[repr(i16)]
+pub enum TrackType {
+    /// # 外部
+    External = 0, // 外部
+    /// # 内部
+    #[default]
+    Internal = 1, // 内部
+    /// # 友盟
+    Alliance = 2, // 友盟
 }
 
 fn sql(sql_text: &str) -> String {
@@ -210,7 +223,7 @@ impl Track {
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
-        query("insert into orange.track values(DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9)")
+        query("insert into orange.track values(DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)")
             .bind(&self.self_clan_id)
             .bind(&self.rival_clan_id)
             .bind(&self.self_history_point)
@@ -220,6 +233,7 @@ impl Track {
             .bind(&self.rival_now_point)
             .bind(&self.round_id)
             .bind(&self.result)
+            .bind(&self.r#type)
             .execute(pool)
             .await
     }
