@@ -48,6 +48,11 @@ pub enum TrackType {
     Internal = 1, // 内部
     /// # 友盟
     Alliance = 2, // 友盟
+    /// # 奖励局
+    Award = 11,
+    /// # 处罚局
+    Penalty = 12,
+    
 }
 
 fn sql(sql_text: &str) -> String {
@@ -185,8 +190,10 @@ impl Track {
         self.rival_now_point = self.rival_history_point;
         self.result = TrackResult::Win;
         if is_reward_point {
+            self.r#type = TrackType::Award;
             cp.update_point(pool, -1).await.unwrap();
         } else {
+            self.r#type = TrackType::Penalty;
             cp.update_point(pool, 1).await.unwrap();
         }
     }
@@ -197,8 +204,10 @@ impl Track {
         self.rival_now_point = self.rival_history_point;
         self.result = TrackResult::Lose;
         if is_reward_point {
+            self.r#type = TrackType::Award;
             cp.update_reward_point(pool, -1).await.unwrap();
         } else {
+            self.r#type = TrackType::Penalty;
             cp.update_reward_point(pool, 1).await.unwrap();
         }
     }
