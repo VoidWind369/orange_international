@@ -28,11 +28,11 @@ enum RewardType {
 
 impl OperateLog {
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as("select * from orange.operate_logs o, orange.round r, orange.clan c where o.round_id = r.id and o.clan_id = c.id").fetch_all(pool).await
+        query_as("select * from orange.operate_log o, orange.round r, orange.clan c where o.round_id = r.id and o.clan_id = c.id").fetch_all(pool).await
     }
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        query("insert into orange.operate_logs values (DEFAULT, $1, $2, $3, $4)")
+        query("insert into orange.operate_log values (DEFAULT, $1, $2, $3, $4)")
             .bind(&self.round_id)
             .bind(&self.text)
             .bind(Utc::now())
