@@ -1,4 +1,4 @@
-use crate::orange::{Clan, Track, TrackResult};
+use crate::orange::{Clan, Track, TrackResult, TrackType};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -103,13 +103,17 @@ impl MiddleApi {
         if let Some(rct) = track.rival_tag.as_ref() {
             if win_tag.eq(rct) {
                 track.result = TrackResult::Lose;
+                track.r#type = TrackType::Alliance;
             } else if self.err {
                 track.result = TrackResult::None;
+                track.r#type = TrackType::External;
             } else {
                 track.result = TrackResult::Win;
+                track.r#type = TrackType::Alliance;
             };
         } else {
             track.result = TrackResult::None;
+            track.r#type = TrackType::External;
         };
 
         // 返回Track
