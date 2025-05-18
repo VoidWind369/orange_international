@@ -13,7 +13,7 @@ use crate::{AppState, api};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 pub use clan::Clan;
@@ -35,7 +35,8 @@ pub fn router() -> Router<AppState> {
         .route("/clan/{tag}/{is_global}", get(clan_tag))
         .route("/clan_info/{tag}", get(clan_info))
         // 部落积分相关
-        .route("/clan_point/{id}", get(clan_point).put(clan_reward_point))
+        .route("/clan_point", put(clan_reward_point))
+        .route("/clan_point/{id}", get(clan_point))
         // 时间发布相关
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
