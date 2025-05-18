@@ -1,8 +1,7 @@
-use crate::orange::{Clan, Track, TrackResult, TrackType};
-use crate::util;
+use crate::orange::{Clan, Track, TrackResult};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::json;
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 use void_log::log_info;
@@ -104,13 +103,10 @@ impl MiddleApi {
         if let Some(rct) = track.rival_tag.as_ref() {
             if win_tag.eq(rct) {
                 track.result = TrackResult::Lose;
-                track.r#type = TrackType::Alliance;
             } else if self.err {
                 track.result = TrackResult::None;
-                track.r#type = TrackType::External;
             } else {
                 track.result = TrackResult::Win;
-                track.r#type = TrackType::Alliance;
             };
         } else {
             track.result = TrackResult::None;
@@ -119,11 +115,4 @@ impl MiddleApi {
         // 返回Track
         track
     }
-}
-
-#[tokio::test]
-async fn test_win() {
-    let pool = util::Config::get().await.get_database().get().await;
-    let clan = Clan::select_tag(&pool, "#YL8GUU0Q", 9, true).await.unwrap();
-    log_info!("<UNK>: {:?}", clan);
 }

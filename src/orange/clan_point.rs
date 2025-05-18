@@ -66,6 +66,11 @@ impl ClanPoint {
         pool: &Pool<Postgres>,
         reward_add: i64,
     ) -> Result<PgQueryResult, Error> {
+        let reward_add = if self.reward_point > 5 {
+            0
+        } else {
+            reward_add
+        };
         let now = Utc::now();
         query("update orange.clan_point set reward_point = $1, update_time = $2 where clan_id = $3")
             .bind(&self.reward_point + reward_add)

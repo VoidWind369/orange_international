@@ -22,7 +22,7 @@ impl Round {
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as("select * from orange.round").fetch_all(pool).await
+        query_as("select * from orange.round order by create_time desc").fetch_all(pool).await
     }
 
     pub async fn select_last(pool: &Pool<Postgres>) -> Result<Self, Error> {
@@ -41,7 +41,7 @@ impl Round {
         };
         let local_time = Local.from_local_datetime(&ndt).single().unwrap();
         let utc_time = local_time.to_utc().with_timezone(&Utc);
-        let code = ndt.format("INTEL%Y%m%d").to_string();
+        let code = ndt.format("GLOBAL%Y%m%d").to_string();
 
         query("insert into orange.round values(DEFAULT, $1, $2, $3)")
             .bind(code)

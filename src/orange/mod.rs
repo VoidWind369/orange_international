@@ -1,13 +1,15 @@
 mod clan;
 mod clan_point;
+mod operate_log;
 mod round;
 mod series;
 mod track;
 
-use crate::AppState;
 use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
+use crate::orange::operate_log::OperateLog;
 use crate::system::{User, UserInfo};
+use crate::{AppState, api};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -18,24 +20,34 @@ pub use clan::Clan;
 pub use clan::ClanUser;
 pub use round::Round;
 use serde_json::Value;
+use sqlx::Error;
+use sqlx::postgres::PgQueryResult;
 pub use track::*;
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        // 部落相关
         .route("/clan", get(clans).post(clan_insert).put(clan_update))
         .route("/clan_search", post(clan_search))
         .route("/clan/{id}", get(clan).delete(clan_delete))
         .route("/clan/{tag}/{is_global}", get(clan_tag))
+        .route("/clan_info/{tag}", get(clan_info))
+        // 部落积分相关
+        .route("/clan_point/{id}", get(clan_point).put(clan_reward_point))
+        // 时间发布相关
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
+        // 对战记录相关
         .route("/track", get(tracks).post(new_track))
         .route("/track/{id}", get(track_round))
+        // 用户关联相关
         .route("/user_clans", get(user_clans))
         .route("/user_clans/{id}", get(userid_clans))
         .route("/clan_user", post(insert_cu).delete(delete_cu))
-        .route("/clan_point/{id}", get(clan_point))
+        // 操作日志相关
+        .route("/operate_log", get(operate_logs))
 }
 
 /// # All Clan
@@ -92,6 +104,17 @@ async fn clan_tag(
     } else {
         (StatusCode::NOT_FOUND, Json::default())
     }
+}
+
+async fn clan_info(AuthBearer(token): AuthBearer, Path(tag): Path<String>) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*clan*select") {
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+    let tag = format!("#{tag}").to_uppercase();
+    let res = api::Clan::get(&tag).await.info();
+    (StatusCode::OK, Json(res))
 }
 
 async fn clan_search(
@@ -265,7 +288,9 @@ async fn track_round(
     }
     // ********************鉴权********************
 
-    let res = Track::select_desc_limit(&app_state.pool, id, 20).await.unwrap();
+    let res = Track::select_desc_limit(&app_state.pool, id, 20)
+        .await
+        .unwrap();
     (StatusCode::OK, Json(res))
 }
 
@@ -543,6 +568,44 @@ async fn clan_point(
 
     let res = ClanPoint::select(&app_state.pool, id).await;
     log_info!("clan_point {id}: {res:?}");
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r))
+    } else {
+        (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
+    }
+}
+
+async fn clan_reward_point(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Json(data): Json<OperateLog>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+    
+    let res = data.new_reward(&app_state.pool).await;
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r.rows_affected()))
+    } else {
+        (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
+    }
+}
+
+async fn operate_logs(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*operate*log*select") {
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    let res = OperateLog::select_all(&app_state.pool).await;
     if let Ok(r) = res {
         (StatusCode::OK, Json(r))
     } else {

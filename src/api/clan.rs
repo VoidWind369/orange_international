@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use crate::util::Config;
 use reqwest::header::AUTHORIZATION;
 use reqwest::Client;
@@ -154,5 +155,16 @@ impl Clan {
                 Default::default()
             }
         }
+    }
+    
+    pub fn info(&self) -> BTreeMap<i64, i64> {
+        let mut towns = BTreeMap::new();
+        if let Some(members) = self.member_list.as_ref() {
+            for member in members {
+                let town_hall_level = member.town_hall_level.unwrap_or_default();
+                *towns.entry(town_hall_level).or_insert(0) += 1;
+            }
+        };
+        towns
     }
 }
