@@ -52,7 +52,6 @@ pub enum TrackType {
     Award = 11,
     /// # 处罚局
     Penalty = 12,
-    
 }
 
 fn sql(sql_text: &str) -> String {
