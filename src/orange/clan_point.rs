@@ -29,6 +29,12 @@ impl ClanPoint {
         }
     }
 
+    pub async fn select_all(pool: &Pool<Postgres>) -> Result<Self, Error> {
+        query_as("select oc.tag, oc.name, ocp.* from orange.clan oc, orange.clan_point ocp where oc.id = ocp.clan_id")
+            .fetch_one(pool)
+            .await
+    }
+
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
         query_as("select oc.tag, oc.name, ocp.* from orange.clan oc, orange.clan_point ocp where oc.id = ocp.clan_id and ocp.clan_id = $1")
             .bind(id)

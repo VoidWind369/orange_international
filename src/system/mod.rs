@@ -119,7 +119,7 @@ async fn user_search(
         log_info!("{:?}", user);
         (StatusCode::OK, Json(user))
     } else {
-        (StatusCode::NOT_FOUND, Json::default())
+        (StatusCode::GONE, Json::default())
     }
 }
 
@@ -136,8 +136,11 @@ async fn user_insert(
     // ********************鉴权********************
 
     let res = data.insert(&app_state.pool).await;
-    let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected))
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r.rows_affected()))
+    } else {
+        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    }
 }
 
 async fn user_update(
@@ -159,8 +162,12 @@ async fn user_update(
     } else {
         data.update(&app_state.pool).await
     };
-    let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected))
+    
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r.rows_affected()))
+    } else {
+        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    }
 }
 
 async fn user_delete(
@@ -176,8 +183,11 @@ async fn user_delete(
     // ********************鉴权********************
 
     let res = User::delete(&app_state.pool, id).await;
-    let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected))
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r.rows_affected()))
+    } else {
+        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    }
 }
 
 async fn password(Path(password): Path<String>) -> impl IntoResponse {

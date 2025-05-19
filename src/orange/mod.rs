@@ -9,19 +9,17 @@ use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
 use crate::orange::operate_log::OperateLog;
 use crate::system::{User, UserInfo};
-use crate::{AppState, api};
+use crate::{api, AppState};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
-use axum::routing::{get, post, put};
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 pub use clan::Clan;
 pub use clan::ClanUser;
 pub use round::Round;
 use serde_json::Value;
-use sqlx::Error;
-use sqlx::postgres::PgQueryResult;
 pub use track::*;
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
@@ -35,7 +33,7 @@ pub fn router() -> Router<AppState> {
         .route("/clan/{tag}/{is_global}", get(clan_tag))
         .route("/clan_info/{tag}", get(clan_info))
         // 部落积分相关
-        .route("/clan_point", put(clan_reward_point))
+        .route("/clan_point", get(clan_point_all).put(clan_reward_point))
         .route("/clan_point/{id}", get(clan_point))
         // 时间发布相关
         .route("/round", get(rounds).post(round_insert))
@@ -63,8 +61,6 @@ async fn clans(
     // ********************鉴权********************
 
     let res = Clan::select_all(&app_state.pool).await.unwrap();
-
-    // let res = Clan::select_all(&app_state.pool).await.unwrap();
     log_info!("{:?}", res);
     (StatusCode::OK, Json(res))
 }
@@ -81,9 +77,13 @@ async fn clan(
     }
     // ********************鉴权********************
 
-    let res = Clan::select(&app_state.pool, id).await.unwrap();
-    log_info!("{:?}", res);
-    (StatusCode::OK, Json(res))
+    let res = Clan::select(&app_state.pool, id).await;
+    if let Ok(r) = res {
+        log_info!("{:?}", r);
+        (StatusCode::OK, Json(r))
+    }  else {
+        (StatusCode::GONE, Json::default())
+    }
 }
 
 async fn clan_tag(
@@ -103,7 +103,7 @@ async fn clan_tag(
         log_info!("{:?}", clan);
         (StatusCode::OK, Json(clan))
     } else {
-        (StatusCode::NOT_FOUND, Json::default())
+        (StatusCode::GONE, Json::default())
     }
 }
 
@@ -134,7 +134,7 @@ async fn clan_search(
         log_info!("{:?}", clan);
         (StatusCode::OK, Json(clan))
     } else {
-        (StatusCode::NOT_FOUND, Json::default())
+        (StatusCode::GONE, Json::default())
     }
 }
 
@@ -158,8 +158,11 @@ async fn clan_insert(
         data.insert(&app_state.pool).await
     };
 
-    let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected))
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r.rows_affected()))
+    }  else {
+        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    }
 }
 
 async fn clan_update(
@@ -188,8 +191,11 @@ async fn clan_update(
         data.update(&app_state.pool).await
     };
 
-    let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected))
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r.rows_affected()))
+    }  else {
+        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    }
 }
 
 async fn clan_delete(
@@ -205,8 +211,11 @@ async fn clan_delete(
     // ********************鉴权********************
 
     let res = Clan::delete(&app_state.pool, id).await;
-    let rows_affected = res.unwrap_or_default().rows_affected();
-    (StatusCode::OK, Json(rows_affected))
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r.rows_affected()))
+    }  else {
+        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    }
 }
 
 async fn rounds(
@@ -236,8 +245,12 @@ async fn last_round(
     }
     // ********************鉴权********************
 
-    let res = Round::select_last(&app_state.pool).await.unwrap();
-    (StatusCode::OK, Json(res))
+    let res = Round::select_last(&app_state.pool).await;
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r))
+    } else {
+        (StatusCode::GONE, Json::default())
+    }
 }
 
 async fn round_insert(
@@ -258,7 +271,7 @@ async fn round_insert(
         let rows_affected = res.unwrap_or_default().rows_affected();
         (StatusCode::OK, Json(rows_affected as i64))
     } else {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(-2))
+        (StatusCode::UNPROCESSABLE_ENTITY, Json(-2))
     }
 }
 
@@ -331,7 +344,7 @@ async fn new_track(
         .await
         .unwrap_or_default();
     if round.check_not_now().await {
-        return (StatusCode::INTERNAL_SERVER_ERROR, Json::default());
+        return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
     };
 
     // 默认国际服
@@ -364,11 +377,11 @@ async fn new_track(
         } else {
             // 未开战
             log_warn!("未开战");
-            return (StatusCode::INTERNAL_SERVER_ERROR, Json::default());
+            return (StatusCode::GONE, Json::default());
         }
     } else {
         log_info!("国服无接口");
-        return (StatusCode::INTERNAL_SERVER_ERROR, Json::default());
+        return (StatusCode::GONE, Json::default());
     };
 
     let (self_tag, rival_tag) = if last {
@@ -428,7 +441,7 @@ async fn new_track(
     // 预查限制重复登记
     if has_self_tracks || has_rival_tracks {
         log_warn!("预查重复登记");
-        return (StatusCode::FORBIDDEN, Json::default());
+        return (StatusCode::CONFLICT, Json::default());
     }
 
     // 添加Track获取输赢（本盟/中间库）
@@ -446,7 +459,7 @@ async fn new_track(
         qr.rows_affected()
     } else {
         log_warn!("数据库Unique重复");
-        return (StatusCode::FORBIDDEN, Json(track));
+        return (StatusCode::CONFLICT, Json(track));
     };
 
     // 更新self
@@ -532,7 +545,7 @@ async fn insert_cu(
     if let Ok(r) = data.insert(&app_state.pool).await {
         (StatusCode::OK, Json(r.rows_affected()))
     } else {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
+        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
     }
 }
 
@@ -551,7 +564,26 @@ async fn delete_cu(
     if let Ok(r) = data.delete(&app_state.pool).await {
         (StatusCode::OK, Json(r.rows_affected()))
     } else {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
+        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    }
+}
+
+async fn clan_point_all(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+    
+    let res = ClanPoint::select_all(&app_state.pool).await;
+    if let Ok(r) = res {
+        (StatusCode::OK, Json(r))
+    } else {
+        (StatusCode::GONE, Json::default())
     }
 }
 
@@ -572,7 +604,7 @@ async fn clan_point(
     if let Ok(r) = res {
         (StatusCode::OK, Json(r))
     } else {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
+        (StatusCode::GONE, Json::default())
     }
 }
 
@@ -592,7 +624,7 @@ async fn clan_reward_point(
     if let Ok(r) = res {
         (StatusCode::OK, Json(r.rows_affected()))
     } else {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
+        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
     }
 }
 
@@ -610,6 +642,6 @@ async fn operate_logs(
     if let Ok(r) = res {
         (StatusCode::OK, Json(r))
     } else {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json::default())
+        (StatusCode::GONE, Json::default())
     }
 }
