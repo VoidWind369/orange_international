@@ -53,6 +53,9 @@ impl ClanPoint {
             .await
     }
 
+    /// # 更新积分
+    /// 正常登记：track记录的积分+0
+    /// 改分：+add
     pub async fn update_point(
         &self,
         pool: &Pool<Postgres>,
