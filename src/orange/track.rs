@@ -107,23 +107,23 @@ impl Track {
         // 先手先用奖惩
         if scp.reward_point > 0 {
             // 先登记用奖惩
-            track.reward_win(scp, pool, true).await;
+            track.reward(scp, pool, true, TrackResult::Win).await;
             return track;
         }
         if rcp.reward_point < 0 {
-            track.reward_win(rcp, pool, false).await;
+            track.reward(rcp, pool, false, TrackResult::Win).await;
             return track;
         }
 
         // 对手奖惩
         if rcp.reward_point > 0 {
             // 先登记用奖惩
-            track.reward_lose(rcp, pool, true).await;
+            track.reward(rcp, pool, true, TrackResult::Lose).await;
             return track;
         }
         if rcp.reward_point < 0 {
             // 先登记用奖惩
-            track.reward_lose(scp, pool, false).await;
+            track.reward(scp, pool, false, TrackResult::Lose).await;
             return track;
         }
 
@@ -183,10 +183,12 @@ impl Track {
         rcp.update_point(pool, 1).await.unwrap();
     }
     
-    /// reward公共方法
-    async fn reward(&mut self, cp: ClanPoint, pool: &Pool<Postgres>, is_reward_point: bool) {
+    /// # reward公共方法
+    /// is_reward_point: true传本方
+    async fn reward(&mut self, cp: ClanPoint, pool: &Pool<Postgres>, is_reward_point: bool, track_result: TrackResult) {
         self.self_now_point = self.self_history_point;
         self.rival_now_point = self.rival_history_point;
+        self.result = track_result;
         if is_reward_point {
             self.r#type = TrackType::Award;
             cp.update_reward_point(pool, -1).await.unwrap();
@@ -194,18 +196,6 @@ impl Track {
             self.r#type = TrackType::Penalty;
             cp.update_reward_point(pool, 1).await.unwrap();
         }
-    }
-
-    /// is_reward_point: true传本方
-    async fn reward_win(&mut self, cp: ClanPoint, pool: &Pool<Postgres>, is_reward_point: bool) {
-        self.result = TrackResult::Win;
-        self.reward(cp, pool, is_reward_point).await;
-    }
-
-    /// is_reward_point: true传对方
-    async fn reward_lose(&mut self, cp: ClanPoint, pool: &Pool<Postgres>, is_reward_point: bool) {
-        self.result = TrackResult::Lose;
-        self.reward(cp, pool, is_reward_point).await;
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
