@@ -9,6 +9,7 @@ mod api;
 mod orange;
 mod system;
 mod util;
+mod middle;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -32,6 +33,7 @@ pub async fn run() {
         .route("/", get(|| async { "Is run time!" }))
         .nest("/system", system::router())
         .nest("/orange", orange::router())
+        .nest("/middle", middle::router())
         .with_state(app_state)
         .layer(CorsLayer::permissive());
 
