@@ -4,6 +4,7 @@ use sqlx::postgres::PgQueryResult;
 use sqlx::types::Json;
 use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
 use uuid::Uuid;
+use void_log::log_info;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow)]
 pub struct Track {
@@ -36,6 +37,7 @@ impl Track {
 
     pub async fn select_tag(pool: &Pool<Postgres>, tag: &str) -> Result<Self, Error> {
         let tag = format!("#{}", tag.replace("#", "").to_uppercase());
+        log_info!("Middle Search Tag {tag}");
         query_as("select * from middle.track where tag = $1").bind(tag).fetch_one(pool).await
     }
 

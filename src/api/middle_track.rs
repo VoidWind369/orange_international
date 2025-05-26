@@ -1,31 +1,34 @@
+use crate::middle;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use sqlx::types::Json;
 use void_log::log_info;
-use crate::{middle, util};
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct MiddleTrackApi {
     pub server: String,
-    #[serde(rename = "bzlm_total_score")]
+    #[serde(alias = "bzlm_total_score")]
     pub bz_total_score: i64,
     pub public_total_score: i64,
     pub details: Vec<MiddleTrackApiDetails>,
     pub summary: Vec<String>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub tag: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+// #[serde(rename_all(deserialize = "camelCase"))]
 pub struct MiddleTrackApiDetails {
-    #[serde(rename = "bzlmRound")]
+    // #[serde(rename(deserialize = "bzlmRound"))]
+    #[serde(alias = "bzlmRound")]
     pub bz_round: i64,
-    #[serde(rename = "round_point")]
+    // #[serde(rename = "round_point")]
     pub round_point: i64,
+    #[serde(alias = "roundResult")]
     pub round_result: String,
+    #[serde(alias = "clanTag")]
     pub clan_tag: String,
+    #[serde(alias = "oppClanTag")]
     pub opp_clan_tag: String,
     pub explain: String,
 }
@@ -59,7 +62,8 @@ impl MiddleTrackApi {
 
 #[tokio::test]
 async fn test() {
-    let pool = util::Config::get().await.get_database().get().await;
+    
+    let pool = crate::util::Config::get().await.get_database().get().await;
     let a = MiddleTrackApi::get("#2J9999990").await.self_to_database();
     let b = a.insert(&pool).await.unwrap();
     log_info!("{a:?} {}", b.rows_affected());
