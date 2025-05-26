@@ -39,7 +39,7 @@ pub fn router() -> Router<AppState> {
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
         // 对战记录相关
-        .route("/track", get(tracks).post(new_track))
+        .route("/track", get(tracks).post(new_track).delete(delete_track))
         .route("/track/{id}", get(track_round))
         // 用户关联相关
         .route("/user_clans", get(user_clans))
@@ -492,6 +492,26 @@ async fn new_track(
 
     log_info!("新登记 {:?}", track);
     (StatusCode::OK, Json(track))
+}
+
+/// # 解除本场登记
+async fn delete_track(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+    
+    if let Ok(r) = Track::delete(&app_state.pool, id).await {
+        (StatusCode::OK, Json(r.rows_affected()))
+    } else {
+        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    }
 }
 
 async fn user_clans(

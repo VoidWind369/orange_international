@@ -182,10 +182,16 @@ impl Track {
         scp.update_point(pool, -1).await.unwrap();
         rcp.update_point(pool, 1).await.unwrap();
     }
-    
+
     /// # reward公共方法
     /// is_reward_point: true传本方
-    async fn reward(&mut self, cp: ClanPoint, pool: &Pool<Postgres>, is_reward_point: bool, track_result: TrackResult) {
+    async fn reward(
+        &mut self,
+        cp: ClanPoint,
+        pool: &Pool<Postgres>,
+        is_reward_point: bool,
+        track_result: TrackResult,
+    ) {
         self.self_now_point = self.self_history_point;
         self.rival_now_point = self.rival_history_point;
         self.result = track_result;
@@ -244,6 +250,13 @@ impl Track {
             .bind(clan_id).bind(round.get_id()).fetch_all(pool).await
     }
 
+    pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
+        query_as(&(sql("and id = $1")))
+            .bind(id)
+            .fetch_one(pool)
+            .await
+    }
+
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("insert into orange.track values(DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)")
@@ -259,6 +272,17 @@ impl Track {
             .bind(&self.r#type)
             .execute(pool)
             .await
+    }
+
+    /// # 解除本场登记
+    pub async fn delete(pool: &Pool<Postgres>, id: Uuid) -> Result<PgQueryResult, Error> {
+        let round = Round::select_last(pool).await.unwrap_or_default();
+        let track = Self::select(pool, id).await?;
+        if track.round_id == round.get_id() {
+            query("delete from orange.track where id = $1").bind(id).execute(pool).await
+        } else { 
+            Err(Error::RowNotFound)
+        }
     }
 }
 
