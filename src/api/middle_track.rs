@@ -20,7 +20,8 @@ pub struct MiddleTrackApi {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MiddleTrackApiDetails {
-    pub bzlm_round: i64,
+    #[serde(rename = "bzlmRound")]
+    pub bz_round: i64,
     #[serde(rename = "round_point")]
     pub round_point: i64,
     pub round_result: String,
