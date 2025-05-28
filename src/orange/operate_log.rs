@@ -1,19 +1,19 @@
+use crate::orange::clan_point::ClanPoint;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
 use uuid::Uuid;
-use crate::orange::clan_point::ClanPoint;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct OperateLog {
     #[serde(skip_deserializing)]
     pub id: Uuid,
-    round_id: Uuid,
+    pub round_id: Uuid,
     text: Option<String>,
     #[serde(skip_deserializing)]
     create_time: DateTime<Utc>,
-    clan_id: Uuid,
+    pub clan_id: Uuid,
     #[sqlx(skip)]
     reward_type: RewardType,
 }
@@ -23,12 +23,20 @@ enum RewardType {
     #[default]
     HitExternal, // 打虫减分
     FaceBlack, // 俩黑
-    Penalty, // 处罚
+    Penalty,   // 处罚
 }
 
 impl OperateLog {
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as("select * from orange.operate_log o, orange.round r, orange.clan c where o.round_id = r.id and o.clan_id = c.id").fetch_all(pool).await
+    }
+
+    pub async fn select_clan_round(&self, pool: &Pool<Postgres>) -> Result<Self, Error> {
+        query_as("select * from orange.operate_log where clan_id = $1 and round_id = $2")
+            .bind(&self.clan_id)
+            .bind(self.round_id)
+            .fetch_one(pool)
+            .await
     }
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
@@ -47,27 +55,27 @@ impl OperateLog {
             RewardType::HitExternal => {
                 if let Ok(q) = clan_point.update_reward_point(pool, 1).await {
                     q.rows_affected()
-                } else { 
+                } else {
                     0
                 };
-                "打虫奖励+1".to_string() 
-            },
+                "打虫奖励+1".to_string()
+            }
             RewardType::FaceBlack => {
                 if let Ok(q) = clan_point.update_reward_point(pool, 1).await {
                     q.rows_affected()
                 } else {
                     0
                 };
-                "连输奖励+1".to_string() 
-            },
+                "连输奖励+1".to_string()
+            }
             RewardType::Penalty => {
                 if let Ok(q) = clan_point.update_reward_point(pool, -1).await {
                     q.rows_affected()
                 } else {
                     0
                 };
-                "违规处罚-1".to_string() 
-            },
+                "违规处罚-1".to_string()
+            }
         };
         self.text = Option::from(text);
         self.create_time = Utc::now();

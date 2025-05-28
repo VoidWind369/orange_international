@@ -9,7 +9,7 @@ use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
 use crate::orange::operate_log::OperateLog;
 use crate::system::{User, UserInfo};
-use crate::{api, AppState};
+use crate::{AppState, api};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -22,7 +22,7 @@ pub use round::Round;
 use serde_json::Value;
 pub use track::*;
 use uuid::Uuid;
-use void_log::{log_info, log_warn};
+use void_log::{log_error, log_info, log_warn};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -81,7 +81,7 @@ async fn clan(
     if let Ok(r) = res {
         log_info!("{:?}", r);
         (StatusCode::OK, Json(r))
-    }  else {
+    } else {
         (StatusCode::GONE, Json::default())
     }
 }
@@ -160,7 +160,7 @@ async fn clan_insert(
 
     if let Ok(r) = res {
         (StatusCode::OK, Json(r.rows_affected()))
-    }  else {
+    } else {
         (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
     }
 }
@@ -193,7 +193,7 @@ async fn clan_update(
 
     if let Ok(r) = res {
         (StatusCode::OK, Json(r.rows_affected()))
-    }  else {
+    } else {
         (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
     }
 }
@@ -213,7 +213,7 @@ async fn clan_delete(
     let res = Clan::delete(&app_state.pool, id).await;
     if let Ok(r) = res {
         (StatusCode::OK, Json(r.rows_affected()))
-    }  else {
+    } else {
         (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
     }
 }
@@ -506,7 +506,7 @@ async fn delete_track(
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
-    
+
     if let Ok(r) = Track::delete(&app_state.pool, id).await {
         (StatusCode::OK, Json(r.rows_affected()))
     } else {
@@ -598,7 +598,7 @@ async fn clan_point_all(
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
-    
+
     let res = ClanPoint::select_all(&app_state.pool).await;
     if let Ok(r) = res {
         (StatusCode::OK, Json(r))
@@ -639,6 +639,16 @@ async fn clan_reward_point(
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
+
+    // 查询重复
+    let check_round = Track::select_clan_round(&app_state.pool, data.clan_id, data.round_id).await.unwrap();
+    if let Err(e) = data.select_clan_round(&app_state.pool).await {
+        log_error!("Check OperateLog Round {e}");
+        return (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    };
+    if check_round.is_empty() {
+        return (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    }
     
     let res = data.new_reward(&app_state.pool).await;
     if let Ok(r) = res {

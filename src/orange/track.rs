@@ -246,8 +246,17 @@ impl Track {
 
     pub async fn select_round(pool: &Pool<Postgres>, clan_id: Uuid) -> Result<Vec<Self>, Error> {
         let round = Round::select_last(pool).await.unwrap_or_default();
+        Self::select_clan_round(pool, clan_id, round.get_id()).await
+    }
+
+    ///
+    pub async fn select_clan_round(
+        pool: &Pool<Postgres>,
+        clan_id: Uuid,
+        round_id: Uuid,
+    ) -> Result<Vec<Self>, Error> {
         query_as(&sql("and (ot.self_clan_id = $1 or ot.rival_clan_id = $1) and ot.round_id = $2 order by ot.create_time desc limit 1"))
-            .bind(clan_id).bind(round.get_id()).fetch_all(pool).await
+            .bind(clan_id).bind(round_id).fetch_all(pool).await
     }
 
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
@@ -279,8 +288,11 @@ impl Track {
         let round = Round::select_last(pool).await.unwrap_or_default();
         let track = Self::select(pool, id).await?;
         if track.round_id == round.get_id() {
-            query("delete from orange.track where id = $1").bind(id).execute(pool).await
-        } else { 
+            query("delete from orange.track where id = $1")
+                .bind(id)
+                .execute(pool)
+                .await
+        } else {
             Err(Error::RowNotFound)
         }
     }
