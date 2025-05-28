@@ -27,6 +27,13 @@ enum RewardType {
 }
 
 impl OperateLog {
+    pub fn is_reward_penalty(&self) -> bool {
+        match &self.reward_type {
+            RewardType::Penalty => true,
+            _ => false,
+        }
+    }
+
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as("select * from orange.operate_log o, orange.round r, orange.clan c where o.round_id = r.id and o.clan_id = c.id").fetch_all(pool).await
     }

@@ -641,14 +641,14 @@ async fn clan_reward_point(
     // ********************鉴权********************
 
     // 查询重复
-    let check_round = Track::select_clan_round(&app_state.pool, data.clan_id, data.round_id).await.unwrap();
-    if let Err(e) = data.select_clan_round(&app_state.pool).await {
-        log_error!("Check OperateLog Round {e}");
-        return (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+    let check_tr_round = Track::select_clan_round(&app_state.pool, data.clan_id, data.round_id)
+        .await
+        .unwrap();
+    let check_op_round = data.select_clan_round(&app_state.pool).await;
+    if (check_tr_round.is_empty() || check_op_round.is_err()) && !data.is_reward_penalty() {
+        log_error!("Check OperateLog Round failed");
+        return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
     };
-    if check_round.is_empty() {
-        return (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
-    }
 
     let res = data.new_reward(&app_state.pool).await;
     if let Ok(r) = res {
