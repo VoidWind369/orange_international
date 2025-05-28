@@ -23,7 +23,9 @@ enum RewardType {
     #[default]
     HitExternal, // 打虫减分
     FaceBlack, // 俩黑
-    Penalty,   // 处罚
+    Penalty,   // 处罚1
+    Penalty2,   // 处罚2
+    Penalty3,   // 处罚3
 }
 
 impl OperateLog {
@@ -82,6 +84,22 @@ impl OperateLog {
                     0
                 };
                 "违规处罚-1".to_string()
+            }
+            RewardType::Penalty2 => {
+                if let Ok(q) = clan_point.update_reward_point(pool, -2).await {
+                    q.rows_affected()
+                } else {
+                    0
+                };
+                "违规处罚-2".to_string()
+            }
+            RewardType::Penalty3 => {
+                if let Ok(q) = clan_point.update_reward_point(pool, -3).await {
+                    q.rows_affected()
+                } else {
+                    0
+                };
+                "违规处罚-3".to_string()
             }
         };
         self.text = Option::from(text);
