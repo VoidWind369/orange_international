@@ -649,7 +649,7 @@ async fn clan_reward_point(
     if check_round.is_empty() {
         return (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
     }
-    
+
     let res = data.new_reward(&app_state.pool).await;
     if let Ok(r) = res {
         (StatusCode::OK, Json(r.rows_affected()))
