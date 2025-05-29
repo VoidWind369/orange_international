@@ -649,6 +649,12 @@ async fn clan_reward_point(
         log_error!("Check OperateLog Round failed");
         return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
     };
+    
+    // 校验是否匹配失败
+    if check_tr_round[0].r#type != TrackType::External {
+        log_error!("Check Type is not External");
+        return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
+    }
 
     let res = data.new_reward(&app_state.pool).await;
     if let Ok(r) = res {
