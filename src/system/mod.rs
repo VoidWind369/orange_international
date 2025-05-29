@@ -1,6 +1,6 @@
 use crate::AppState;
-use argon2::password_hash::SaltString;
 use argon2::password_hash::rand_core::OsRng;
+use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHasher};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -15,7 +15,6 @@ mod group;
 mod redis;
 mod user;
 
-use crate::orange::Clan;
 pub use group::Group;
 pub use redis::UserInfo;
 pub use user::User;
