@@ -645,7 +645,7 @@ async fn clan_reward_point(
         .await
         .unwrap();
     let check_op_round = data.select_clan_round(&app_state.pool).await;
-    if (check_tr_round.is_empty() || check_op_round.is_err()) && !data.is_reward_penalty() {
+    if (check_tr_round.is_empty() || check_op_round.is_ok()) && !data.is_reward_penalty() {
         log_error!("Check OperateLog Round failed");
         return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
     };
