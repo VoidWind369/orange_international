@@ -16,6 +16,12 @@ pub struct OperateLog {
     pub clan_id: Uuid,
     #[sqlx(skip)]
     reward_type: RewardType,
+    #[serde(skip_deserializing)]
+    tag: String,
+    #[serde(skip_deserializing)]
+    name: String,
+    #[serde(skip_deserializing)]
+    round_code: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -24,8 +30,8 @@ enum RewardType {
     HitExternal, // 打虫减分
     FaceBlack, // 俩黑
     Penalty,   // 处罚1
-    Penalty2,   // 处罚2
-    Penalty3,   // 处罚3
+    Penalty2,  // 处罚2
+    Penalty3,  // 处罚3
 }
 
 impl OperateLog {
@@ -37,7 +43,7 @@ impl OperateLog {
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as("select * from orange.operate_log o, orange.round r, orange.clan c where o.round_id = r.id and o.clan_id = c.id").fetch_all(pool).await
+        query_as("select o.*, c.tag, c.name, r.code round_code from orange.operate_log o, orange.round r, orange.clan c where o.round_id = r.id and o.clan_id = c.id order by o.create_time desc").fetch_all(pool).await
     }
 
     pub async fn select_clan_round(&self, pool: &Pool<Postgres>) -> Result<Self, Error> {
@@ -75,7 +81,7 @@ impl OperateLog {
                 } else {
                     0
                 };
-                "连输奖励+1".to_string()
+                "脸黑安慰+1".to_string()
             }
             RewardType::Penalty => {
                 if let Ok(q) = clan_point.update_reward_point(pool, -1).await {
