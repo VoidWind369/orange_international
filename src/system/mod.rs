@@ -153,8 +153,7 @@ async fn user_update(
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
-
-    log_msg!("Update {:?}", &data);
+    
     let res = if data.password.is_some() {
         data.update_password(&app_state.pool).await
     } else if data.status.is_some() {
