@@ -239,11 +239,19 @@ async fn last_round(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     log_info!("User Token {}", token);
-    if let Err(e) = UserInfo::get_user(&token).await {
-        log_warn!("UNAUTHORIZED {e}");
+    let user = if let Ok(user_info) = UserInfo::get_user(&token).await {
+        user_info
+    } else {
+        log_warn!("UNAUTHORIZED");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    };
+    // ********************鉴权********************
+
+    let ucs = user.user_clans(&app_state.pool).await.unwrap_or_default();
+    if ucs.is_empty() {
+        log_warn!("UNAUTHORIZED NOT CLANS");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
-    // ********************鉴权********************
 
     let res = Round::select_last(&app_state.pool).await;
     if let Ok(r) = res {
