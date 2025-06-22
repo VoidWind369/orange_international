@@ -15,17 +15,17 @@ pub struct OperateLog {
     create_time: DateTime<Utc>,
     pub clan_id: Uuid,
     #[sqlx(skip)]
-    reward_type: RewardType,
+    pub reward_type: RewardType,
     #[serde(skip_deserializing)]
-    tag: String,
+    pub tag: String,
     #[serde(skip_deserializing)]
-    name: String,
+    pub name: String,
     #[serde(skip_deserializing)]
-    round_code: String,
+    pub round_code: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-enum RewardType {
+pub enum RewardType {
     #[default]
     HitExternal, // 打虫减分
     FaceBlack, // 俩黑

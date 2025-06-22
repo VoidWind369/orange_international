@@ -7,7 +7,7 @@ mod track;
 
 use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
-use crate::orange::operate_log::OperateLog;
+use crate::orange::operate_log::{OperateLog, RewardType};
 use crate::system::{User, UserInfo};
 use crate::{AppState, api};
 use axum::extract::{Path, State};
@@ -651,9 +651,19 @@ async fn clan_reward_point(
     };
     
     // 校验是否匹配失败
-    if check_tr_round[0].r#type != TrackType::External {
-        log_error!("Check Type is not External");
-        return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
+    match data.reward_type {
+        RewardType::HitExternal | RewardType::FaceBlack => {
+            if check_tr_round[0].r#type != TrackType::External {
+                log_error!("Check Type is not External");
+                return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
+            }
+        }
+        _ => {
+            if check_tr_round[0].r#type == TrackType::External {
+                log_error!("Check Type is External");
+                return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
+            }
+        }
     }
 
     let res = data.new_reward(&app_state.pool).await;
