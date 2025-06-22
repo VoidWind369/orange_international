@@ -1,6 +1,7 @@
 mod track;
 
-use crate::api::MiddleTrackApi;
+use crate::api::{MiddleRoundApi, MiddleTrackApi};
+use crate::system::UserInfo;
 use crate::AppState;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -15,6 +16,8 @@ use void_log::{log_info, log_warn};
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/track/{tag}", get(track_tag))
+        // 时间发布相关
+        .route("/round", get(round_insert))
 }
 
 async fn track_tag(
@@ -62,4 +65,20 @@ async fn track_tag(
             }
         }
     }
+}
+
+async fn round_insert(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    log_info!("User Token {}", token);
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
+    }
+    // ********************鉴权********************
+
+    let res = MiddleRoundApi::get().await.new_round(&app_state.pool).await;
+    (StatusCode::OK, Json(res))
 }

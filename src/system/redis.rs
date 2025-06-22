@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct UserInfo {
-    id: Uuid,
+    pub id: Uuid,
     code: String,
     email: String,
     name: String,

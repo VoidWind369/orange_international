@@ -9,7 +9,7 @@ use axum::routing::{get, head, post};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 use uuid::Uuid;
-use void_log::{log_info, log_warn};
+use void_log::{log_info, log_msg, log_warn};
 
 mod group;
 mod redis;
@@ -153,7 +153,7 @@ async fn user_update(
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
-
+    
     let res = if data.password.is_some() {
         data.update_password(&app_state.pool).await
     } else if data.status.is_some() {

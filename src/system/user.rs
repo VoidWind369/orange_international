@@ -74,10 +74,9 @@ impl User {
 
     pub async fn update(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
-        query("update public.user set name = $1, email = $2, status = $3, phone = $4, update_time = $5 where id = $6")
+        query("update public.user set name = $1, email = $2, phone = $3, update_time = $4 where id = $5")
             .bind(&self.name)
             .bind(&self.email)
-            .bind(&self.status)
             .bind(&self.phone)
             .bind(now)
             .bind(&self.id)
