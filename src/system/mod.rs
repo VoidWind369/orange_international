@@ -14,6 +14,7 @@ use void_log::{log_info, log_msg, log_warn};
 mod group;
 mod redis;
 mod user;
+mod role;
 
 pub use group::Group;
 pub use redis::UserInfo;

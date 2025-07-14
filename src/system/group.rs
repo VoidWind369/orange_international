@@ -16,6 +16,9 @@ pub struct Group {
 }
 
 impl Group {
+    pub fn get_id(&self) -> Uuid {
+        self.id.unwrap_or_default()
+    }
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as("select * from public.group").fetch_all(pool).await
     }
