@@ -1,5 +1,6 @@
 use crate::orange::Clan;
-use crate::system::{Group, User};
+use crate::system::role::Role;
+use crate::system::User;
 use crate::util::Config;
 use redis::{Commands, RedisResult, Value};
 use serde::{Deserialize, Serialize};
@@ -12,19 +13,19 @@ pub struct UserInfo {
     email: String,
     name: String,
     token: String,
-    group: Vec<Group>,
+    role: Vec<Role>,
     clans: Vec<Clan>,
 }
 
 impl UserInfo {
-    pub fn new(user: User, token: String, clans: Vec<Clan>, group: Vec<Group>) -> Self {
+    pub fn new(user: User, token: String, clans: Vec<Clan>, role: Vec<Role>) -> Self {
         Self {
             id: user.id.unwrap(),
             code: user.code.unwrap(),
             email: user.email.unwrap(),
             name: user.name.unwrap_or_default(),
             token,
-            group,
+            role,
             clans,
         }
     }

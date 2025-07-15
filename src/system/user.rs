@@ -1,6 +1,7 @@
 use crate::orange::{Clan, ClanUser};
 use crate::system::Group;
 use crate::system::UserInfo;
+use crate::system::role::Role;
 use argon2::password_hash::SaltString;
 use argon2::password_hash::rand_core::OsRng;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
@@ -83,7 +84,7 @@ impl User {
             .execute(pool)
             .await
     }
-    
+
     pub async fn update_status(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("update public.user set status = $1, update_time = $2 where id = $3")
@@ -118,7 +119,7 @@ impl User {
         &self,
         password: &str,
         clans: Vec<Clan>,
-        groups: Vec<Group>,
+        roles: Vec<Role>,
     ) -> Option<UserInfo> {
         let argon2 = Argon2::default();
         // 验证密码
@@ -137,7 +138,7 @@ impl User {
                 let token = format!("{}{}{}", timestamp, id, code);
 
                 // 生成登录信息
-                let user_info = UserInfo::new(self.clone(), token, clans, groups);
+                let user_info = UserInfo::new(self.clone(), token, clans, roles);
                 // 存Redis
                 user_info.set_user(3600).await;
                 Some(user_info)
@@ -150,22 +151,31 @@ impl User {
 
     pub async fn verify_login(&self, pool: &Pool<Postgres>) -> Option<UserInfo> {
         // 查用户
-        let data_user =
-            query_as::<_, User>("select * from public.user where (email = $1 or code = $1) and status = 1")
-                .bind(&self.email)
-                .fetch_one(pool)
-                .await
-                .unwrap_or_default();
+        let data_user = query_as::<_, User>(
+            "select * from public.user where (email = $1 or code = $1) and status = 1",
+        )
+        .bind(&self.email)
+        .fetch_one(pool)
+        .await
+        .unwrap_or_default();
         log_info!("{:?}", &data_user);
         // 查部落
         let user_clans = data_user.user_clans(pool).await.unwrap();
-        // 查权限
+        // 查权限组
         let user_groups = data_user.user_groups(pool).await.unwrap();
+        // 查权限
+        let mut user_roles = vec![];
+        for user_group in user_groups {
+            let mut gr = user_group.group_roles(pool).await.unwrap();
+            user_roles.append(&mut gr)
+        }
+        // 去重
+        user_roles.dedup();
         log_info!("{:?}", &user_clans);
-        log_info!("{:?}", &user_groups);
+        log_info!("{:?}", &user_roles);
         // 通过查到的用户数据校验
         data_user
-            .verify_password(&self.password.clone().unwrap(), user_clans, user_groups)
+            .verify_password(&self.password.clone().unwrap(), user_clans, user_roles)
             .await
     }
 }
