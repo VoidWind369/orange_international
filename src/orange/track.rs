@@ -197,10 +197,10 @@ impl Track {
         self.result = track_result;
         if is_reward_point {
             self.r#type = TrackType::Award;
-            cp.update_reward_point(pool, -1).await.unwrap();
+            cp.update_reward_point_base(pool, -1).await.unwrap();
         } else {
             self.r#type = TrackType::Penalty;
-            cp.update_reward_point(pool, 1).await.unwrap();
+            cp.update_reward_point_base(pool, 1).await.unwrap();
         }
     }
 

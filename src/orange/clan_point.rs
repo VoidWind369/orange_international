@@ -80,9 +80,17 @@ impl ClanPoint {
         } else {
             reward_add
         };
+        self.update_reward_point_base(pool, reward_add).await
+    }
+
+    pub async fn update_reward_point_base(
+        &self,
+        pool: &Pool<Postgres>,
+        reward_add: i64,
+    ) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
-        query("update orange.clan_point set reward_point = $1, update_time = $2 where clan_id = $3")
-            .bind(&self.reward_point + reward_add)
+        query("update orange.clan_point set reward_point = reward_point + $1, update_time = $2 where clan_id = $3")
+            .bind(reward_add)
             .bind(now)
             .bind(&self.clan_id)
             .execute(pool)
