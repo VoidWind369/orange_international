@@ -1,14 +1,13 @@
 use crate::orange::{Clan, ClanUser};
-use crate::system::Group;
-use crate::system::UserInfo;
 use crate::system::role::Role;
-use argon2::password_hash::SaltString;
+use crate::system::UserInfo;
 use argon2::password_hash::rand_core::OsRng;
+use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
 use uuid::Uuid;
 use void_log::{log_error, log_info, log_warn};
 
@@ -31,7 +30,7 @@ pub struct User {
 impl User {
     fn get_password_hash(&self) -> String {
         // 密码Hash加密
-        let salt = SaltString::generate(&mut OsRng);
+        let salt = SaltString::try_from_rng(&mut OsRng).unwrap();
         let argon2 = Argon2::default();
         argon2
             .hash_password(&self.password.clone().unwrap().as_bytes(), &salt)

@@ -1,7 +1,12 @@
 use crate::AppState;
-use argon2::password_hash::rand_core::OsRng;
-use argon2::password_hash::SaltString;
-use argon2::{Argon2, PasswordHasher};
+use argon2::{
+    password_hash::{
+        // `OsRng` requires enabled `std` crate feature
+        rand_core::OsRng
+        , PasswordHasher, SaltString
+    },
+    Argon2
+};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -9,7 +14,7 @@ use axum::routing::{get, head, post};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
 use uuid::Uuid;
-use void_log::{log_info, log_msg, log_warn};
+use void_log::{log_info, log_warn};
 
 mod group;
 mod redis;
@@ -192,7 +197,7 @@ async fn user_delete(
 
 async fn password(Path(password): Path<String>) -> impl IntoResponse {
     // 密码Hash加密
-    let salt = SaltString::generate(&mut OsRng);
+    let salt = SaltString::try_from_rng(&mut OsRng).unwrap();
     let argon2 = Argon2::default();
     argon2
         .hash_password(password.as_bytes(), &salt)

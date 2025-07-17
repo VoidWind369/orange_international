@@ -4,7 +4,7 @@ use reqwest::Client;
 use crate::api::war::WarClan;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use void_log::{log_info, log_link, log_warn};
+use void_log::{log_info, log_warn};
 use crate::util::Config;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -75,15 +75,4 @@ impl WarLogItem {
         let dt = NaiveDateTime::parse_from_str(&self.end_time, "%Y%m%dT%H%M%S%.3fZ").unwrap();
         dt.and_utc()
     }
-}
-
-#[tokio::test]
-async fn test() {
-    let w = WarLog::get("#q82u2qr9",15).await;
-    log_link!("{:?}", w.clone());
-    w.items.unwrap().iter().for_each(|i| {
-        log_link!("{}", &i.end_time);
-        let tz = i.end_time_utc();
-        log_link!("{tz}")
-    });
 }
