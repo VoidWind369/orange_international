@@ -75,23 +75,26 @@ impl MiddleApi {
             )
         };
 
-        // 查询对家在数据库记录,没有就新增
-        let rival_clan = if let Ok(rc) = Clan::select_tag(pool, &rival_tag, status, is_global).await {
+        let mut clan = Clan {
+            tag: Some(rival_tag.clone()),
+            name: rival_name,
+            status: Some(status),
+            series_id,
+            ..Default::default()
+        };
+
+        // 查询对家在数据库记录,有就更新,没有就新增
+        if let Ok(rc) = Clan::select_tag(pool, &rival_tag, is_global).await {
             log_info!("有缓存: {}", rc.name.clone().unwrap());
-            rc
+            if rc.status.is_some_and(|x| x != status) {
+                clan.id = rc.id;
+                clan.update(pool).await.unwrap();
+            }
         } else {
-            let clan = Clan {
-                tag: Some(rival_tag.clone()),
-                name: rival_name,
-                status: Some(status),
-                series_id,
-                ..Default::default()
-            };
             let insert_res = clan.insert(pool).await.unwrap();
             log_info!("新增外部: {}", insert_res.rows_affected());
-            let opp_clan = Clan::select_tag(pool, &rival_tag, status, is_global).await;
-            opp_clan.unwrap()
         };
+        let rival_clan = Clan::select_tag(pool, &rival_tag, is_global).await.unwrap();
 
         // 组装Track
         track.rival_clan_id = rival_clan.id.unwrap();

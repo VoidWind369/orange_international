@@ -39,13 +39,11 @@ impl Clan {
     pub async fn select_tag(
         pool: &Pool<Postgres>,
         tag: &str,
-        status: i16,
         is_global: bool,
     ) -> Result<Self, Error> {
-        query_as("select * from orange.clan where tag = $1 and is_global = $2 and status = $3")
+        query_as("select * from orange.clan where tag = $1 and is_global = $2")
             .bind(tag)
             .bind(is_global)
-            .bind(status)
             .fetch_one(pool)
             .await
     }

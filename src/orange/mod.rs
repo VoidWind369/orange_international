@@ -99,9 +99,12 @@ async fn clan_tag(
     log_info!("Clan {} {}", &tag, is_global);
     let tag = format!("#{tag}").to_uppercase();
 
-    if let Ok(clan) = Clan::select_tag(&app_state.pool, &tag, 1, is_global).await {
-        log_info!("{:?}", clan);
-        (StatusCode::OK, Json(clan))
+    if let Ok(clan) = Clan::select_tag(&app_state.pool, &tag, is_global).await {
+        if clan.status.is_some_and(|x| x == 1) {
+            (StatusCode::OK, Json(clan))
+        } else {
+            (StatusCode::GONE, Json::default())
+        }
     } else {
         (StatusCode::GONE, Json::default())
     }
@@ -401,42 +404,53 @@ async fn new_track(
     log_info!("登记1: 获取双方标签 {self_tag} vs {rival_tag}");
 
     // 查询本家加盟状态
-    let self_clan = Clan::select_tag(&app_state.pool, &self_tag, 1, is_global).await;
+    let self_clan = Clan::select_tag(&app_state.pool, &self_tag, is_global).await;
 
     // 查询对家加盟状态
-    let rival_clan = Clan::select_tag(&app_state.pool, &rival_tag, 1, is_global).await;
+    let rival_clan = Clan::select_tag(&app_state.pool, &rival_tag, is_global).await;
 
     // 本家积分数据
     let (self_point, has_self_tracks) = if let Ok(ref clan) = self_clan {
-        log_info!("登记2: 本家加盟状态 {:?}", &clan);
-        let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
-        log_info!("登记3: 本家积分状态 {:?}", &point);
-        point.clan_id = clan.id.unwrap_or_default();
+        if clan.status.is_some_and(|x| x == 1) {
+            log_info!("登记2: 本家加盟状态 {:?}", &clan);
+            let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
+            log_info!("登记3: 本家积分状态 {:?}", &point);
+            point.clan_id = clan.id.unwrap_or_default();
 
-        let cst = Track::select_round(&app_state.pool, point.clan_id)
-            .await
-            .unwrap();
+            let cst = Track::select_round(&app_state.pool, point.clan_id)
+                .await
+                .unwrap();
 
-        (Some(point), !cst.is_empty())
+            (Some(point), !cst.is_empty())
+        } else {
+            log_warn!("本家部落异常");
+            (None, false)
+        }
     } else {
-        log_info!("标签错误");
+        log_warn!("标签错误");
         (None, false)
     };
 
     // 对家积分数据
     let (rival_point, has_rival_tracks) = if let Ok(ref clan) = rival_clan {
-        log_info!("登记2: 对家加盟状态 {:?}", &clan);
-        let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
-        log_info!("登记3: 对家积分状态 {:?}", &point);
-        point.clan_id = clan.id.unwrap_or_default();
+        if clan.status.is_some_and(|x| x == 1) {
+            log_info!("登记2: 对家加盟状态 {:?}", &clan);
+            let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
+            log_info!("登记3: 对家积分状态 {:?}", &point);
+            point.clan_id = clan.id.unwrap_or_default();
 
-        let crt = Track::select_round(&app_state.pool, point.clan_id)
-            .await
-            .unwrap();
+            let crt = Track::select_round(&app_state.pool, point.clan_id)
+                .await
+                .unwrap();
 
-        (Some(point), !crt.is_empty())
+            (Some(point), !crt.is_empty())
+        } else {
+            log_warn!("对面部落异常");
+            (None, false)
+        }
+
     } else {
-        log_info!("盟外部落");
+        log_warn!("盟外部落");
         (None, false)
     };
 
@@ -657,7 +671,7 @@ async fn clan_reward_point(
         log_error!("Check OperateLog Round failed");
         return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
     };
-    
+
     // 校验是否匹配失败
     match data.reward_type {
         RewardType::HitExternal | RewardType::FaceBlack => {
