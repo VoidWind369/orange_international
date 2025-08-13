@@ -9,7 +9,7 @@ use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
 use crate::orange::operate_log::{OperateLog, RewardType};
 use crate::system::{User, UserInfo};
-use crate::{AppState, api};
+use crate::{api, AppState};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -448,7 +448,6 @@ async fn new_track(
             log_warn!("对面部落异常");
             (None, false)
         }
-
     } else {
         log_warn!("盟外部落");
         (None, false)

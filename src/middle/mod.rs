@@ -79,6 +79,9 @@ async fn round_insert(
     }
     // ********************鉴权********************
 
-    let res = MiddleRoundApi::get().await.new_round(&app_state.pool).await;
-    (StatusCode::OK, Json(res))
+    if let Ok(res) = MiddleRoundApi::get().await.new_round(&app_state.pool).await {
+        (StatusCode::OK, Json(res))
+    } else {
+        (StatusCode::UNAUTHORIZED, Json::default())
+    }
 }

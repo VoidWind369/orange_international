@@ -1,50 +1,69 @@
+use crate::orange::Round;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{Pool, Postgres};
 use void_log::log_info;
-use crate::orange::Round;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-#[serde(rename_all(deserialize = "PascalCase"))]
 pub struct MiddleRoundApi {
-    current_round: String,
-    current_round_sync_time: String,
-    future_round: String,
-    future_round_sync_time: String,
+    current_round: u64,
+    current_sync_time: String,
+    current_cfa_round: String,
+    future_round: u64,
+    future_sync_time: String,
+    future_cfa_round: String,
 }
 
 impl MiddleRoundApi {
     pub async fn get() -> Self {
-        let url = Url::parse("http://www.cocbzlm.com/api/gettime_global.php").unwrap();
+        let url =
+            Url::parse("http://www.cocbzlm.com:8422/api/wardecider/syncTimeGlobal_alliance/cfa")
+                .unwrap();
         log_info!("{}", &url);
 
         let response = Client::new()
-            .post(url).header("x-api-key", "AFDFSDSaawdfFFeeeAAFDAGHHJNH996!!")
-            .send().await;
-        response.expect("response error").json().await.expect("failed to parse API response")
+            .get(url)
+            .header("x-api-key", "AFDFSDSaawdfFFeeeAAFDAGHHJNH996!!")
+            .send()
+            .await;
+        response
+            .expect("response error")
+            .json()
+            .await
+            .expect("failed to parse API response")
     }
 
     pub async fn _get_text() -> Value {
-        let url = Url::parse("http://www.cocbzlm.com/api/gettime_global.php").unwrap();
+        let url = Url::parse("http://www.cocbzlm.com:8422/api/wardecider/syncTimeGlobal_alliance/cfa").unwrap();
         log_info!("{}", &url);
 
         let response = Client::new()
-            .post(url).header("x-api-key", "AFDFSDSaawdfFFeeeAAFDAGHHJNH996!!")
-            .send().await;
-        response.expect("response error").json().await.expect("failed to parse API response")
+            .get(url)
+            .header("x-api-key", "AFDFSDSaawdfFFeeeAAFDAGHHJNH996!!")
+            .send()
+            .await;
+        response
+            .expect("response error")
+            .json()
+            .await
+            .expect("failed to parse API response")
     }
-    
-    pub async fn new_round(&self, pool: &Pool<Postgres>) -> u64 {
-        if self.current_round.eq(&self.future_round) { 
-            return 0;
+
+    pub async fn new_round(&self, pool: &Pool<Postgres>) -> Result<u64, String> {
+        if self.current_round.eq(&self.future_round) {
+            return Err("轮次未更新".to_string());
         }
-        Round::insert(&self.future_round, pool).await.unwrap_or_default().rows_affected()
+        let res = Round::insert(&self.future_sync_time, pool)
+            .await
+            .unwrap_or_default()
+            .rows_affected();
+        Ok(res)
     }
 }
 
 #[tokio::test]
 async fn test() {
-    let a = MiddleRoundApi::_get_text().await;
+    let a = MiddleRoundApi::get().await;
     println!("{a:?}")
 }
