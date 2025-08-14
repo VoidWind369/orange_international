@@ -37,7 +37,7 @@ pub enum RewardType {
 impl OperateLog {
     pub fn is_reward_penalty(&self) -> bool {
         match &self.reward_type {
-            RewardType::Penalty => true,
+            RewardType::Penalty | RewardType::Penalty2 | RewardType::Penalty3 => true,
             _ => false,
         }
     }

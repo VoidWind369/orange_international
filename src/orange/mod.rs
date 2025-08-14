@@ -9,7 +9,8 @@ use crate::api::War;
 use crate::orange::clan_point::ClanPoint;
 use crate::orange::operate_log::{OperateLog, RewardType};
 use crate::system::{User, UserInfo};
-use crate::{api, AppState};
+use crate::util::RestApi;
+use crate::{AppState, api};
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
@@ -273,16 +274,22 @@ async fn round_insert(
     log_info!("User Token {}", token);
     if let Err(e) = UserInfo::get_user(&token).await {
         log_warn!("UNAUTHORIZED {e}");
-        return (StatusCode::UNAUTHORIZED, Json::default());
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
     // ********************鉴权********************
 
     if let Some(time_str) = data["time"].as_str() {
         let res = Round::insert(time_str, &app_state.pool).await;
         let rows_affected = res.unwrap_or_default().rows_affected();
-        (StatusCode::OK, Json(rows_affected as i64))
+        (
+            StatusCode::OK,
+            RestApi::new("Succeeded", "发布成功", Some(rows_affected as i64)),
+        )
     } else {
-        (StatusCode::UNPROCESSABLE_ENTITY, Json(-2))
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            RestApi::new("Error: Time String", "失败: 格式错误", Some(-2)),
+        )
     }
 }
 
@@ -354,6 +361,7 @@ async fn new_track(
     let round = Round::select_last(&app_state.pool)
         .await
         .unwrap_or_default();
+    log_info!("检查登记时间 {}", &round.get_id());
     if round.check_not_now().await {
         return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
     };
@@ -364,6 +372,7 @@ async fn new_track(
     } else {
         true
     };
+    log_info!("是否国际服 {is_global}");
 
     // 获取先后手
     let last = if let Some(l) = data.get("last") {
@@ -371,9 +380,11 @@ async fn new_track(
     } else {
         false
     };
+    log_info!("是否后手 {last}");
 
     // 获取本家标签
     let self_tag = data["self_tag"].as_str().unwrap_or_default().to_string();
+    log_info!("获取本家标签 {}", &self_tag);
 
     // 获取对家标签
     let rival_tag = if let Some(tag) = data.get("rival_tag") {
@@ -394,6 +405,7 @@ async fn new_track(
         log_info!("国服无接口");
         return (StatusCode::GONE, Json::default());
     };
+    log_info!("获取对家标签 {}", &rival_tag);
 
     let (self_tag, rival_tag) = if last {
         (rival_tag, self_tag)
@@ -657,7 +669,7 @@ async fn clan_reward_point(
     // ********************鉴权********************
     if let Err(e) = UserInfo::get_user(&token).await {
         log_warn!("UNAUTHORIZED {e}");
-        return (StatusCode::UNAUTHORIZED, Json::default());
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
     // ********************鉴权********************
 
@@ -666,9 +678,18 @@ async fn clan_reward_point(
         .await
         .unwrap();
     let check_op_round = data.select_clan_round(&app_state.pool).await;
-    if (check_tr_round.is_empty() || check_op_round.is_ok()) && !data.is_reward_penalty() {
+    if check_tr_round.is_empty() && !data.is_reward_penalty() {
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            RestApi::failed("Round no Track", "轮次未登记"),
+        );
+    }
+    if check_op_round.is_ok() && !data.is_reward_penalty() {
         log_error!("Check OperateLog Round failed");
-        return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            RestApi::failed("OperateLog: Round has Reword", "日志：本轮已奖惩"),
+        );
     };
 
     // 校验是否匹配失败
@@ -676,7 +697,10 @@ async fn clan_reward_point(
         RewardType::HitExternal | RewardType::FaceBlack => {
             if check_tr_round[0].r#type != TrackType::External {
                 log_error!("Check Type is not External");
-                return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
+                return (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    RestApi::new("Not External", "并非匹配失败", None),
+                );
             }
         }
         _ => {
@@ -689,9 +713,12 @@ async fn clan_reward_point(
 
     let res = data.new_reward(&app_state.pool).await;
     if let Ok(r) = res {
-        (StatusCode::OK, Json(r.rows_affected()))
+        (StatusCode::OK, RestApi::successful(r.rows_affected()))
     } else {
-        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            RestApi::failed("Insert Failed", "添加失败"),
+        )
     }
 }
 
@@ -701,14 +728,14 @@ async fn operate_logs(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     if !token.eq("cfa*operate*log*select") {
-        return (StatusCode::UNAUTHORIZED, Json::default());
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
     // ********************鉴权********************
 
     let res = OperateLog::select_all(&app_state.pool).await;
     if let Ok(r) = res {
-        (StatusCode::OK, Json(r))
+        (StatusCode::OK, RestApi::successful(r))
     } else {
-        (StatusCode::GONE, Json::default())
+        (StatusCode::GONE, RestApi::error())
     }
 }

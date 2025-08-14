@@ -1,3 +1,4 @@
+use axum::Json;
 use r2d2::PooledConnection;
 use redis::Client;
 use serde::{Deserialize, Serialize};
@@ -123,5 +124,42 @@ impl ConfigDatabase {
 impl ConfigApi {
     pub fn set_url(&self, path: &str) -> String {
         format!("{}/{path}", &self.url.clone().unwrap_or_default())
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RestApi<D> {
+    msg_en: String,
+    msg_cn: String,
+    data: Option<D>,
+}
+
+impl<D> RestApi<D> {
+    /// # 自行构建
+    pub fn new(msg_en: impl ToString, msg_cn: impl ToString, data: Option<D>) -> Json<Self> {
+        Json(Self {
+            msg_en: msg_en.to_string(),
+            msg_cn: msg_cn.to_string(),
+            data,
+        })
+    }
+
+    /// # 成功返回
+    pub fn successful(data: D) -> Json<Self> {
+        Self::new("Successful", "成功", Some(data))
+    }
+
+    /// # 各种报错返回
+    pub fn failed(msg_en: impl ToString, msg_cn: impl ToString) -> Json<Self> {
+        Self::new(msg_en, msg_cn, None)
+    }
+
+    pub fn error() -> Json<Self> {
+        RestApi::new("SysTem Error", "程序错误", None)
+    }
+
+    /// # 鉴权失败
+    pub fn unauthorized() -> Json<Self> {
+        Self::new("UNAUTHORIZED", "鉴权失败", None)
     }
 }
