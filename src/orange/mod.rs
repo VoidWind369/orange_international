@@ -394,7 +394,7 @@ async fn new_track(
         log_info!("国际服自动登记");
         // 查对面标签
         let war = War::get(&self_tag).await;
-        if let Some(opponent_clan_tag) = war.opponent.unwrap().tag {
+        if let Some(opponent_clan_tag) = war.opponent.unwrap_or_default().tag {
             opponent_clan_tag
         } else {
             // 未开战
