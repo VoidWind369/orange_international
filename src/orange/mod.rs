@@ -229,12 +229,12 @@ async fn rounds(
     // ********************鉴权********************
     if let Err(e) = UserInfo::get_user(&token).await {
         log_warn!("UNAUTHORIZED {e}");
-        return (StatusCode::UNAUTHORIZED, Json::default());
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
     // ********************鉴权********************
 
     let res = Round::select_all(&app_state.pool).await.unwrap();
-    (StatusCode::OK, Json(res))
+    (StatusCode::OK, RestApi::successful(res))
 }
 
 async fn last_round(
@@ -247,21 +247,21 @@ async fn last_round(
         user_info
     } else {
         log_warn!("UNAUTHORIZED");
-        return (StatusCode::UNAUTHORIZED, Json::default());
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     };
     // ********************鉴权********************
 
     let ucs = user.user_clans(&app_state.pool).await.unwrap_or_default();
     if ucs.is_empty() {
         log_warn!("UNAUTHORIZED NOT CLANS");
-        return (StatusCode::UNAUTHORIZED, Json::default());
+        return (StatusCode::UNAUTHORIZED, RestApi::failed("UNAUTHORIZED: User has no clans", "鉴权：用户无部落"));
     }
 
     let res = Round::select_last(&app_state.pool).await;
     if let Ok(r) = res {
-        (StatusCode::OK, Json(r))
+        (StatusCode::OK, RestApi::successful(r))
     } else {
-        (StatusCode::GONE, Json::default())
+        (StatusCode::GONE, RestApi::error())
     }
 }
 
@@ -353,7 +353,7 @@ async fn new_track(
     log_info!("User Token {}", token);
     if let Err(e) = UserInfo::get_user(&token).await {
         log_warn!("UNAUTHORIZED {e}");
-        return (StatusCode::UNAUTHORIZED, Json::default());
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
     // ********************鉴权********************
 
@@ -363,7 +363,7 @@ async fn new_track(
         .unwrap_or_default();
     log_info!("检查登记时间 {}", &round.get_id());
     if round.check_not_now().await {
-        return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
+        return (StatusCode::UNPROCESSABLE_ENTITY, RestApi::failed("Round not in War","本轮未开战"));
     };
 
     // 默认国际服
@@ -399,11 +399,11 @@ async fn new_track(
         } else {
             // 未开战
             log_warn!("未开战");
-            return (StatusCode::GONE, Json::default());
+            return (StatusCode::GONE, RestApi::failed("Clan not in War", "部落不在对战中"));
         }
     } else {
         log_info!("国服无接口");
-        return (StatusCode::GONE, Json::default());
+        return (StatusCode::GONE, RestApi::failed("China not Api", "国服无接口"));
     };
     log_info!("获取对家标签 {}", &rival_tag);
 
@@ -468,13 +468,13 @@ async fn new_track(
     // 本轮已登记直接返回
     if let Ok(track) = Track::select_registered(&app_state.pool, &self_point, &round).await {
         log_info!("已登记 {:?}", track);
-        return (StatusCode::OK, Json(track));
+        return (StatusCode::OK, RestApi::successful(track));
     };
 
     // 预查限制重复登记
     if has_self_tracks || has_rival_tracks {
         log_warn!("预查重复登记");
-        return (StatusCode::CONFLICT, Json::default());
+        return (StatusCode::CONFLICT, RestApi::failed("Repeat Track", "重复登记"));
     }
 
     // 添加Track获取输赢（本盟/中间库）
@@ -492,7 +492,7 @@ async fn new_track(
         qr.rows_affected()
     } else {
         log_warn!("数据库Unique重复");
-        return (StatusCode::CONFLICT, Json(track));
+        return (StatusCode::CONFLICT, RestApi::successful(track));
     };
 
     // 更新self
@@ -524,7 +524,7 @@ async fn new_track(
     );
 
     log_info!("新登记 {:?}", track);
-    (StatusCode::OK, Json(track))
+    (StatusCode::OK, RestApi::successful(track))
 }
 
 /// # 解除本场登记
@@ -688,25 +688,30 @@ async fn clan_reward_point(
         log_error!("Check OperateLog Round failed");
         return (
             StatusCode::UNPROCESSABLE_ENTITY,
-            RestApi::failed("OperateLog: Round has Reword", "日志：本轮已奖惩"),
+            RestApi::failed("OperateLog: Round can not repeat Reword", "日志：本轮不能重复奖惩"),
         );
     };
 
     // 校验是否匹配失败
     match data.reward_type {
+        // 匹配成功不能奖励
         RewardType::HitExternal | RewardType::FaceBlack => {
             if check_tr_round[0].r#type != TrackType::External {
                 log_error!("Check Type is not External");
                 return (
                     StatusCode::UNPROCESSABLE_ENTITY,
-                    RestApi::new("Not External", "并非匹配失败", None),
+                    RestApi::failed("Success can not Reward", "匹配成功不能奖励"),
                 );
             }
         }
+        // 匹配失败不能处罚
         _ => {
             if check_tr_round[0].r#type == TrackType::External {
                 log_error!("Check Type is External");
-                return (StatusCode::UNPROCESSABLE_ENTITY, Json::default());
+                return (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    RestApi::failed("External can not Runish", "匹配失败不能处罚"),
+                );
             }
         }
     }

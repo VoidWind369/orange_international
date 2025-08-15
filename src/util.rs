@@ -127,7 +127,7 @@ impl ConfigApi {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RestApi<D> {
     msg_en: String,
     msg_cn: String,
