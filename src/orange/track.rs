@@ -64,6 +64,12 @@ pub struct TrackRewardInfo {
     pub rival_now: i64,
 }
 
+impl Track {
+    fn set_reward_info(&mut self, reward_info: TrackRewardInfo) {
+        self.reward_info = Some(Json(reward_info));
+    }
+}
+
 impl TrackRewardInfo {
     fn new_history(self_history: i64, rival_history: i64) -> Self {
         Self {
@@ -110,9 +116,14 @@ impl Track {
     ) -> Self {
         let round = Round::select_last(pool).await.unwrap_or_default();
 
+        // 初始化积分
         let scp = self_clan_point.unwrap_or_default();
         let rcp = rival_clan_point.unwrap_or_default();
 
+        // 初始化奖励券
+        let mut reward_info = TrackRewardInfo::new_history(scp.reward_point, rcp.reward_point);
+
+        // 初始化Track
         let mut track = Self {
             self_clan_id: scp.clan_id,
             rival_clan_id: rcp.clan_id,
@@ -120,7 +131,6 @@ impl Track {
             rival_history_point: rcp.point,
             create_time: Utc::now(),
             round_id: round.get_id(),
-            reward_info: None,
             ..Default::default()
         };
 
@@ -132,14 +142,11 @@ impl Track {
         // ****************Track Failed 调用中间库****************
 
         // ***********************奖惩阶段***********************
-        // 初始化奖励券
-        let mut reward_info = TrackRewardInfo::new_history(scp.reward_point, rcp.reward_point);
-
         // 先手先用奖惩
         if scp.reward_point > 0 {
             // 先登记用奖惩
             reward_info.set_now(1, 0);
-            track.reward_info = Some(Json(reward_info));
+            track.set_reward_info(reward_info);
             track
                 .reward(scp, pool, true, TrackResult::Win)
                 .await;
@@ -147,7 +154,7 @@ impl Track {
         }
         if rcp.reward_point < 0 {
             reward_info.set_now(0, 1);
-            track.reward_info = Some(Json(reward_info));
+            track.set_reward_info(reward_info);
             track
                 .reward(rcp, pool, false, TrackResult::Win)
                 .await;
@@ -158,7 +165,7 @@ impl Track {
         if rcp.reward_point > 0 {
             // 先登记用奖惩
             reward_info.set_now(0, 1);
-            track.reward_info = Some(Json(reward_info));
+            track.set_reward_info(reward_info);
             track
                 .reward(rcp, pool, true, TrackResult::Lose)
                 .await;
@@ -167,7 +174,7 @@ impl Track {
         if rcp.reward_point < 0 {
             // 先登记用奖惩
             reward_info.set_now(1, 0);
-            track.reward_info = Some(Json(reward_info));
+            track.set_reward_info(reward_info);
             track
                 .reward(scp, pool, false, TrackResult::Lose)
                 .await;
@@ -177,7 +184,7 @@ impl Track {
 
         // ***********************积分阶段***********************
         // 无奖励写入
-        track.reward_info = Some(Json(reward_info));
+        track.set_reward_info(reward_info);
         if track.self_history_point < track.rival_history_point {
             // self < rival
             track.win(scp, rcp, pool).await;
@@ -199,6 +206,7 @@ impl Track {
         }
         // ***********************积分阶段***********************
 
+        log_info!("{:?}", &track);
         track
     }
 
