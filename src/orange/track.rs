@@ -205,8 +205,6 @@ impl Track {
                 .await;
         }
         // ***********************积分阶段***********************
-
-        log_info!("{:?}", &track);
         track
     }
 
@@ -329,7 +327,7 @@ impl Track {
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
-        query("insert into orange.track values(DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)")
+        query("insert into orange.track values(DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)")
             .bind(&self.self_clan_id)
             .bind(&self.rival_clan_id)
             .bind(&self.self_history_point)
