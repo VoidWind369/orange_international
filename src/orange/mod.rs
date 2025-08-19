@@ -149,8 +149,8 @@ async fn clan_insert(
     Json(data): Json<Clan>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if let Err(e) = UserInfo::get_user(&token).await {
-        log_warn!("UNAUTHORIZED {e}");
+    if !UserInfo::get_user(&token).await.unwrap().check_role("admin") {
+        log_warn!("UNAUTHORIZED");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************

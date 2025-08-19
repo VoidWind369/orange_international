@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
+use sqlx::types::Json;
 use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
 use uuid::Uuid;
 use void_log::log_info;
@@ -22,6 +23,7 @@ pub struct Track {
     pub round_id: Uuid,
     pub result: TrackResult,
     pub r#type: TrackType,
+    pub reward_info: Option<Json<TrackRewardInfo>>,
     pub round_code: Option<String>,
     pub self_tag: Option<String>,
     pub self_name: Option<String>,
@@ -52,6 +54,30 @@ pub enum TrackType {
     Award = 11,
     /// # 处罚局
     Penalty = 12,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
+pub struct TrackRewardInfo {
+    pub self_history: i64,
+    pub rival_history: i64,
+    pub self_now: i64,
+    pub rival_now: i64,
+}
+
+impl TrackRewardInfo {
+    fn new_history(self_history: i64, rival_history: i64) -> Self {
+        Self {
+            self_history,
+            rival_history,
+            ..Default::default()
+        }
+    }
+
+    /// # 设置扣除奖励券
+    fn set_now(&mut self, self_sub: i64, rival_sub: i64) {
+        self.self_now = self.self_history + self_sub;
+        self.rival_now = self.rival_history + rival_sub
+    }
 }
 
 fn sql(sql_text: &str) -> String {
@@ -94,6 +120,7 @@ impl Track {
             rival_history_point: rcp.point,
             create_time: Utc::now(),
             round_id: round.get_id(),
+            reward_info: None,
             ..Default::default()
         };
 
@@ -104,29 +131,53 @@ impl Track {
         }
         // ****************Track Failed 调用中间库****************
 
+        // ***********************奖惩阶段***********************
+        // 初始化奖励券
+        let mut reward_info = TrackRewardInfo::new_history(scp.reward_point, rcp.reward_point);
+
         // 先手先用奖惩
         if scp.reward_point > 0 {
             // 先登记用奖惩
-            track.reward(scp, pool, true, TrackResult::Win).await;
+            reward_info.set_now(1, 0);
+            track.reward_info = Some(Json(reward_info));
+            track
+                .reward(scp, pool, true, TrackResult::Win)
+                .await;
             return track;
         }
         if rcp.reward_point < 0 {
-            track.reward(rcp, pool, false, TrackResult::Win).await;
+            reward_info.set_now(0, 1);
+            track.reward_info = Some(Json(reward_info));
+            track
+                .reward(rcp, pool, false, TrackResult::Win)
+                .await;
             return track;
         }
 
         // 对手奖惩
         if rcp.reward_point > 0 {
             // 先登记用奖惩
-            track.reward(rcp, pool, true, TrackResult::Lose).await;
+            reward_info.set_now(0, 1);
+            track.reward_info = Some(Json(reward_info));
+            track
+                .reward(rcp, pool, true, TrackResult::Lose)
+                .await;
             return track;
         }
         if rcp.reward_point < 0 {
             // 先登记用奖惩
-            track.reward(scp, pool, false, TrackResult::Lose).await;
+            reward_info.set_now(1, 0);
+            track.reward_info = Some(Json(reward_info));
+            track
+                .reward(scp, pool, false, TrackResult::Lose)
+                .await;
             return track;
         }
+        // ***********************奖惩阶段***********************
 
+        // ***********************积分阶段***********************
+        // 无奖励写入
+        track.reward_info = Some(Json(reward_info));
         if track.self_history_point < track.rival_history_point {
             // self < rival
             track.win(scp, rcp, pool).await;
@@ -146,6 +197,8 @@ impl Track {
                 .check_history(self_tracks, rival_tracks, scp, rcp, pool)
                 .await;
         }
+        // ***********************积分阶段***********************
+
         track
     }
 
@@ -224,10 +277,10 @@ impl Track {
         query_as(&sql(
             "and (self_clan_id = $1 or rival_clan_id = $1) and round_id = $2",
         ))
-        .bind(sc.clan_id)
-        .bind(round.get_id())
-        .fetch_one(pool)
-        .await
+            .bind(sc.clan_id)
+            .bind(round.get_id())
+            .fetch_one(pool)
+            .await
     }
 
     pub async fn select_desc_limit(
@@ -238,10 +291,10 @@ impl Track {
         query_as(&sql(
             "and (self_clan_id = $1 or rival_clan_id = $1) order by create_time desc limit $2",
         ))
-        .bind(clan_id)
-        .bind(limit)
-        .fetch_all(pool)
-        .await
+            .bind(clan_id)
+            .bind(limit)
+            .fetch_all(pool)
+            .await
     }
 
     pub async fn select_round(pool: &Pool<Postgres>, clan_id: Uuid) -> Result<Vec<Self>, Error> {
@@ -279,6 +332,7 @@ impl Track {
             .bind(&self.round_id)
             .bind(&self.result)
             .bind(&self.r#type)
+            .bind(&self.reward_info)
             .execute(pool)
             .await
     }
