@@ -15,6 +15,12 @@ pub struct Role {
     code: Option<String>,
 }
 
+impl Role {
+    pub fn get_code(&self) -> String {
+        self.code.clone().unwrap_or_default()
+    }
+}
+
 impl Group {
     pub async fn group_roles(&self, pool: &Pool<Postgres>) -> Result<Vec<Role>, Error> {
         query_as("select * from public.role r, public.group_role rg where r.id = rg.role_id and rg.group_id = $1")

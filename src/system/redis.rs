@@ -57,4 +57,8 @@ impl UserInfo {
         let mut conn = config.redis();
         conn.del(key)
     }
+
+    pub fn check_role(&self, role_code: &str) -> bool {
+        self.role.iter().any(|r| r.get_code() == role_code)
+    }
 }
