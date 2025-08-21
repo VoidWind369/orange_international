@@ -81,8 +81,8 @@ impl TrackRewardInfo {
 
     /// # 设置扣除奖励券
     fn set_now(&mut self, self_sub: i64, rival_sub: i64) {
-        self.self_now = self.self_history + self_sub;
-        self.rival_now = self.rival_history + rival_sub
+        self.self_now = self.self_history - self_sub;
+        self.rival_now = self.rival_history - rival_sub
     }
 }
 
