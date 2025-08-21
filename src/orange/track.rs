@@ -164,7 +164,7 @@ impl Track {
         // 对手奖惩
         if rcp.reward_point > 0 {
             // 先登记用奖惩
-            reward_info.set_now(0, 1);
+            reward_info.set_now(0, -1);
             track.set_reward_info(reward_info);
             track
                 .reward(rcp, pool, true, TrackResult::Lose)
@@ -173,7 +173,7 @@ impl Track {
         }
         if rcp.reward_point < 0 {
             // 先登记用奖惩
-            reward_info.set_now(1, 0);
+            reward_info.set_now(-1, 0);
             track.set_reward_info(reward_info);
             track
                 .reward(scp, pool, false, TrackResult::Lose)
