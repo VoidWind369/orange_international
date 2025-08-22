@@ -81,8 +81,8 @@ impl TrackRewardInfo {
 
     /// # 设置扣除奖励券
     fn set_now(&mut self, self_sub: i64, rival_sub: i64) {
-        self.self_now = self.self_history + self_sub;
-        self.rival_now = self.rival_history + rival_sub
+        self.self_now = self.self_history - self_sub;
+        self.rival_now = self.rival_history - rival_sub
     }
 }
 
@@ -152,11 +152,11 @@ impl Track {
                 .await;
             return track;
         }
-        if scp.reward_point < 0 {
-            reward_info.set_now(-1, 0);
+        if rcp.reward_point < 0 {
+            reward_info.set_now(0, 1);
             track.set_reward_info(reward_info);
             track
-                .reward(scp, pool, false, TrackResult::Lose)
+                .reward(rcp, pool, false, TrackResult::Win)
                 .await;
             return track;
         }
@@ -164,7 +164,7 @@ impl Track {
         // 对手奖惩
         if rcp.reward_point > 0 {
             // 先登记用奖惩
-            reward_info.set_now(0, 1);
+            reward_info.set_now(0, -1);
             track.set_reward_info(reward_info);
             track
                 .reward(rcp, pool, true, TrackResult::Lose)
@@ -173,10 +173,10 @@ impl Track {
         }
         if rcp.reward_point < 0 {
             // 先登记用奖惩
-            reward_info.set_now(0, -1);
+            reward_info.set_now(-1, 0);
             track.set_reward_info(reward_info);
             track
-                .reward(rcp, pool, false, TrackResult::Win)
+                .reward(scp, pool, false, TrackResult::Lose)
                 .await;
             return track;
         }
@@ -243,7 +243,7 @@ impl Track {
     }
 
     /// # reward公共方法
-    /// is_reward_point: 是否奖励局
+    /// is_reward_point: true传本方
     async fn reward(
         &mut self,
         cp: ClanPoint,
