@@ -407,6 +407,7 @@ async fn new_track(
     };
     log_info!("获取对家标签 {}", &rival_tag);
 
+    // 判断先后手
     let (self_tag, rival_tag) = if last {
         (rival_tag, self_tag)
     } else {
