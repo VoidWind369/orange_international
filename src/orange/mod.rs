@@ -272,8 +272,8 @@ async fn round_insert(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     log_info!("User Token {}", token);
-    if let Err(e) = UserInfo::get_user(&token).await {
-        log_warn!("UNAUTHORIZED {e}");
+    if !UserInfo::get_user(&token).await.unwrap().check_role("admin") {
+        log_warn!("UNAUTHORIZED");
         return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
     // ********************鉴权********************
