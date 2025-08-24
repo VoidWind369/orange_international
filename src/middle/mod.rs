@@ -1,8 +1,10 @@
+/// # 中间库Api
 mod track;
 
+use crate::AppState;
 use crate::api::{MiddleRoundApi, MiddleTrackApi};
 use crate::system::UserInfo;
-use crate::AppState;
+use crate::util::RestApi;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -38,7 +40,7 @@ async fn track_tag(
                 // 超过1h重新缓存
                 let mta = MiddleTrackApi::get(&tag).await;
                 let cache = mta.clone().self_to_database().update(&app_state.pool).await;
-                if let Ok (r) = cache {
+                if let Ok(r) = cache {
                     log_info!("Update Cache {}", r.rows_affected());
                     (StatusCode::OK, Json(mta))
                 } else {
@@ -56,7 +58,7 @@ async fn track_tag(
             // 第一次查询新增
             let mta = MiddleTrackApi::get(&tag).await;
             let cache = mta.clone().self_to_database().insert(&app_state.pool).await;
-            if let Ok (r) = cache {
+            if let Ok(r) = cache {
                 log_info!("Create Cache {}", r.rows_affected());
                 (StatusCode::OK, Json(mta))
             } else {
@@ -75,13 +77,15 @@ async fn round_insert(
     log_info!("User Token {}", token);
     if let Err(e) = UserInfo::get_user(&token).await {
         log_warn!("UNAUTHORIZED {e}");
-        return (StatusCode::UNAUTHORIZED, Json::default());
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
     // ********************鉴权********************
 
-    if let Ok(res) = MiddleRoundApi::get().await.new_round(&app_state.pool).await {
-        (StatusCode::OK, Json(res))
-    } else {
-        (StatusCode::UNAUTHORIZED, Json::default())
+    match MiddleRoundApi::get().await.new_round(&app_state.pool).await {
+        Ok(res) => (StatusCode::OK, RestApi::successful(res)),
+        Err(e) => (
+            StatusCode::GONE,
+            RestApi::failed("Round Not Update", &e),
+        ),
     }
 }
