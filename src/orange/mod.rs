@@ -397,7 +397,7 @@ async fn new_track(
         false
     };
     log_info!(
-        "[检查信息]1.检查登记时间 {}\n2.是否国际服 {is_global}\n3.是否后手 {last}",
+        "[检查信息]\n1.检查登记时间 {}\n2.是否国际服 {is_global}\n3.是否后手 {last}",
         round.get_code()
     );
 
@@ -492,7 +492,7 @@ async fn new_track(
 
     // 本轮已登记直接返回
     if let Ok(track) = Track::select_registered(&app_state.pool, &self_point, &round).await {
-        log_info!("已登记 {:?}", track);
+        log_info!("已登记 {}", track);
         return (StatusCode::OK, RestApi::successful(track));
     };
 
@@ -551,7 +551,7 @@ async fn new_track(
         rival_point
     );
 
-    log_info!("新登记 {:?}", track);
+    log_info!("新登记 {}", track);
     (StatusCode::OK, RestApi::successful(track))
 }
 

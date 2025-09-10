@@ -7,6 +7,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
 use sqlx::types::Json;
 use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
+use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::log_info;
 
@@ -62,6 +63,40 @@ pub struct TrackRewardInfo {
     pub rival_history: i64,
     pub self_now: i64,
     pub rival_now: i64,
+}
+
+impl Display for Track {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}\n{} vs {}\n先手方: {:?} | {:?} | {} -> {}\n后手方: {:?} | {:?} | {} -> {}\n{:?}\nRoundCode: {:?}\nResult: {:?}\nType: {:?}",
+            self.id,
+            self.self_clan_id,
+            self.rival_clan_id,
+            self.self_tag,
+            self.self_name,
+            self.self_history_point,
+            self.self_now_point,
+            self.rival_tag,
+            self.rival_name,
+            self.rival_history_point,
+            self.rival_now_point,
+            self.reward_info,
+            self.round_code,
+            self.result,
+            self.r#type
+        )
+    }
+}
+
+impl Display for TrackRewardInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[奖惩记录]\n先手: {} -> {}\n后手: {} -> {}",
+            self.self_history, self.self_now, self.rival_history, self.rival_now
+        )
+    }
 }
 
 impl Track {
@@ -147,17 +182,13 @@ impl Track {
             // 先登记用奖惩
             reward_info.set_now(1, 0);
             track.set_reward_info(reward_info);
-            track
-                .reward(scp, pool, true, TrackResult::Win)
-                .await;
+            track.reward(scp, pool, true, TrackResult::Win).await;
             return track;
         }
         if scp.reward_point < 0 {
             reward_info.set_now(-1, 0);
             track.set_reward_info(reward_info);
-            track
-                .reward(scp, pool, false, TrackResult::Lose)
-                .await;
+            track.reward(scp, pool, false, TrackResult::Lose).await;
             return track;
         }
 
@@ -166,18 +197,14 @@ impl Track {
             // 先登记用奖惩
             reward_info.set_now(0, 1);
             track.set_reward_info(reward_info);
-            track
-                .reward(rcp, pool, true, TrackResult::Lose)
-                .await;
+            track.reward(rcp, pool, true, TrackResult::Lose).await;
             return track;
         }
         if rcp.reward_point < 0 {
             // 先登记用奖惩
             reward_info.set_now(0, -1);
             track.set_reward_info(reward_info);
-            track
-                .reward(rcp, pool, false, TrackResult::Win)
-                .await;
+            track.reward(rcp, pool, false, TrackResult::Win).await;
             return track;
         }
         // ***********************奖惩阶段***********************
@@ -269,6 +296,7 @@ impl Track {
             .await
     }
 
+    /// # 查询是否已登记
     pub async fn select_registered(
         pool: &Pool<Postgres>,
         self_clan_point: &Option<ClanPoint>,
@@ -279,14 +307,14 @@ impl Track {
         } else {
             return Err(Error::ColumnNotFound("Not Found".to_string()));
         };
-        log_info!("Track: Self Point{sc:?}");
+        log_info!("Track: Self Point {sc}");
         query_as(&sql(
             "and (self_clan_id = $1 or rival_clan_id = $1) and round_id = $2",
         ))
-            .bind(sc.clan_id)
-            .bind(round.get_id())
-            .fetch_one(pool)
-            .await
+        .bind(sc.clan_id)
+        .bind(round.get_id())
+        .fetch_one(pool)
+        .await
     }
 
     pub async fn select_desc_limit(
@@ -297,10 +325,10 @@ impl Track {
         query_as(&sql(
             "and (self_clan_id = $1 or rival_clan_id = $1) order by create_time desc limit $2",
         ))
-            .bind(clan_id)
-            .bind(limit)
-            .fetch_all(pool)
-            .await
+        .bind(clan_id)
+        .bind(limit)
+        .fetch_all(pool)
+        .await
     }
 
     pub async fn select_round(pool: &Pool<Postgres>, clan_id: Uuid) -> Result<Vec<Self>, Error> {
