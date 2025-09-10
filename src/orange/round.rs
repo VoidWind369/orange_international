@@ -16,6 +16,10 @@ impl Round {
     pub fn get_id(&self) -> Uuid {
         self.id
     }
+    
+    pub fn get_code(&self) -> &str {
+        &self.code
+    }
 
     pub async fn check_not_now(&self) -> bool {
         self.round_time > Utc::now()

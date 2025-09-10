@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::log_warn;
 
@@ -17,6 +18,16 @@ pub struct ClanPoint {
 
     pub tag: Option<String>,
     pub name: Option<String>,
+}
+
+impl Display for ClanPoint {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:?}\nTag: {:?}\nUpdateTime: {}\nPoint: {}\nRewardPoint: {}",
+            self.clan_id, self.tag, self.update_time, self.point, self.reward_point
+        )
+    }
 }
 
 impl ClanPoint {
@@ -75,11 +86,7 @@ impl ClanPoint {
         pool: &Pool<Postgres>,
         reward_add: i64,
     ) -> Result<PgQueryResult, Error> {
-        let reward_add = if self.reward_point > 5 {
-            0
-        } else {
-            reward_add
-        };
+        let reward_add = if self.reward_point > 5 { 0 } else { reward_add };
         self.update_reward_point_base(pool, reward_add).await
     }
 

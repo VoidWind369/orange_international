@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::log_info;
 
@@ -20,6 +21,21 @@ pub struct Clan {
     pub status: Option<i16>,
     pub series_id: Option<Uuid>,
     pub is_global: Option<bool>,
+}
+
+impl Display for Clan {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:?}\nTag: {:?}\nName: {:?}\nCreateTime: {:?}\nStatus: {:?}\nIsGlobal: {:?}",
+            &self.id.unwrap_or_default(),
+            &self.tag,
+            &self.name,
+            &self.create_time,
+            &self.status,
+            &self.is_global,
+        )
+    }
 }
 
 impl Clan {

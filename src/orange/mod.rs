@@ -149,7 +149,11 @@ async fn clan_insert(
     Json(data): Json<Clan>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if !UserInfo::get_user(&token).await.unwrap().check_role("admin") {
+    if !UserInfo::get_user(&token)
+        .await
+        .unwrap()
+        .check_role("admin")
+    {
         log_warn!("UNAUTHORIZED");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
@@ -208,7 +212,11 @@ async fn clan_delete(
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if !UserInfo::get_user(&token).await.unwrap().check_role("admin") {
+    if !UserInfo::get_user(&token)
+        .await
+        .unwrap()
+        .check_role("admin")
+    {
         log_warn!("UNAUTHORIZED");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
@@ -254,7 +262,10 @@ async fn last_round(
     let ucs = user.user_clans(&app_state.pool).await.unwrap_or_default();
     if ucs.is_empty() {
         log_warn!("UNAUTHORIZED NOT CLANS");
-        return (StatusCode::UNAUTHORIZED, RestApi::failed("UNAUTHORIZED: User has no clans", "鉴权：用户无部落"));
+        return (
+            StatusCode::UNAUTHORIZED,
+            RestApi::failed("UNAUTHORIZED: User has no clans", "鉴权：用户无部落"),
+        );
     }
 
     let res = Round::select_last(&app_state.pool).await;
@@ -272,7 +283,11 @@ async fn round_insert(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     log_info!("User Token {}", token);
-    if !UserInfo::get_user(&token).await.unwrap().check_role("admin") {
+    if !UserInfo::get_user(&token)
+        .await
+        .unwrap()
+        .check_role("admin")
+    {
         log_warn!("UNAUTHORIZED");
         return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
@@ -361,9 +376,11 @@ async fn new_track(
     let round = Round::select_last(&app_state.pool)
         .await
         .unwrap_or_default();
-    log_info!("检查登记时间 {}", &round.get_id());
     if round.check_not_now().await {
-        return (StatusCode::UNPROCESSABLE_ENTITY, RestApi::failed("Round not in War","本轮未开战"));
+        return (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            RestApi::failed("Round not in War", "本轮未开战"),
+        );
     };
 
     // 默认国际服
@@ -372,7 +389,6 @@ async fn new_track(
     } else {
         true
     };
-    log_info!("是否国际服 {is_global}");
 
     // 获取先后手
     let last = if let Some(l) = data.get("last") {
@@ -380,15 +396,17 @@ async fn new_track(
     } else {
         false
     };
-    log_info!("是否后手 {last}");
+    log_info!(
+        "[检查信息]1.检查登记时间 {}\n2.是否国际服 {is_global}\n3.是否后手 {last}",
+        round.get_code()
+    );
 
     // 获取本家标签
     let self_tag = data["self_tag"].as_str().unwrap_or_default().to_string();
-    log_info!("获取本家标签 {}", &self_tag);
 
     // 获取对家标签
     let rival_tag = if let Some(tag) = data.get("rival_tag") {
-        log_info!("手动登记");
+        log_info!("启用手动登记");
         tag.as_str().unwrap_or_default().to_string()
     } else if is_global {
         log_info!("国际服自动登记");
@@ -399,13 +417,19 @@ async fn new_track(
         } else {
             // 未开战
             log_warn!("未开战");
-            return (StatusCode::GONE, RestApi::failed("Clan not in War", "部落不在对战中"));
+            return (
+                StatusCode::GONE,
+                RestApi::failed("Clan not in War", "部落不在对战中"),
+            );
         }
     } else {
         log_info!("国服无接口");
-        return (StatusCode::GONE, RestApi::failed("China not Api", "国服无接口"));
+        return (
+            StatusCode::GONE,
+            RestApi::failed("China not Api", "国服无接口"),
+        );
     };
-    log_info!("获取对家标签 {}", &rival_tag);
+    log_info!("登记0: 本家标签 {} | 对家标签 {}", &self_tag, &rival_tag);
 
     // 判断先后手
     let (self_tag, rival_tag) = if last {
@@ -414,7 +438,7 @@ async fn new_track(
         (self_tag, rival_tag)
     };
 
-    log_info!("登记1: 获取双方标签 {self_tag} vs {rival_tag}");
+    log_info!("登记1: 先手标签 {self_tag} | 后手标签 {rival_tag}");
 
     // 查询本家加盟状态
     let self_clan = Clan::select_tag(&app_state.pool, &self_tag, is_global).await;
@@ -425,9 +449,9 @@ async fn new_track(
     // 本家积分数据
     let (self_point, has_self_tracks) = if let Ok(ref clan) = self_clan {
         if clan.status.is_some_and(|x| x == 1) {
-            log_info!("登记2: 本家加盟状态 {:?}", &clan);
+            log_info!("登记2: 本家加盟状态 {}", &clan);
             let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
-            log_info!("登记3: 本家积分状态 {:?}", &point);
+            log_info!("登记3: 本家积分状态 {}", &point);
             point.clan_id = clan.id.unwrap_or_default();
 
             let cst = Track::select_round(&app_state.pool, point.clan_id)
@@ -436,20 +460,20 @@ async fn new_track(
 
             (Some(point), !cst.is_empty())
         } else {
-            log_warn!("本家部落异常");
+            log_warn!("登记2: 本家部落异常");
             (None, false)
         }
     } else {
-        log_warn!("标签错误");
+        log_warn!("登记2: 标签错误");
         (None, false)
     };
 
     // 对家积分数据
     let (rival_point, has_rival_tracks) = if let Ok(ref clan) = rival_clan {
         if clan.status.is_some_and(|x| x == 1) {
-            log_info!("登记2: 对家加盟状态 {:?}", &clan);
+            log_info!("登记2: 对家加盟状态 {}", &clan);
             let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
-            log_info!("登记3: 对家积分状态 {:?}", &point);
+            log_info!("登记3: 对家积分状态 {}", &point);
             point.clan_id = clan.id.unwrap_or_default();
 
             let crt = Track::select_round(&app_state.pool, point.clan_id)
@@ -458,11 +482,11 @@ async fn new_track(
 
             (Some(point), !crt.is_empty())
         } else {
-            log_warn!("对面部落异常");
+            log_warn!("登记2: 对面部落异常");
             (None, false)
         }
     } else {
-        log_warn!("盟外部落");
+        log_warn!("登记2: 盟外部落");
         (None, false)
     };
 
@@ -475,7 +499,10 @@ async fn new_track(
     // 预查限制重复登记
     if has_self_tracks || has_rival_tracks {
         log_warn!("预查重复登记");
-        return (StatusCode::CONFLICT, RestApi::failed("Repeat Track", "重复登记"));
+        return (
+            StatusCode::CONFLICT,
+            RestApi::failed("Repeat Track", "重复登记"),
+        );
     }
 
     // 添加Track获取输赢（本盟/中间库）
@@ -689,7 +716,10 @@ async fn clan_reward_point(
         log_error!("Check OperateLog Round failed");
         return (
             StatusCode::UNPROCESSABLE_ENTITY,
-            RestApi::failed("OperateLog: Round can not repeat Reword", "日志：本轮不能重复奖惩"),
+            RestApi::failed(
+                "OperateLog: Round can not repeat Reword",
+                "日志：本轮不能重复奖惩",
+            ),
         );
     };
 
