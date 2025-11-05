@@ -1,26 +1,27 @@
-use std::net::SocketAddr;
 use crate::AppState;
 use argon2::{
+    Argon2,
     password_hash::{
+        PasswordHasher,
+        SaltString,
         // `OsRng` requires enabled `std` crate feature
-        rand_core::OsRng
-        , PasswordHasher, SaltString
+        rand_core::OsRng,
     },
-    Argon2
 };
 use axum::extract::{ConnectInfo, Path, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, head, post};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
+use std::net::SocketAddr;
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
 
 mod group;
 mod redis;
-mod user;
 mod role;
+mod user;
 
 pub use group::Group;
 pub use redis::UserInfo;
@@ -38,6 +39,7 @@ pub fn router() -> Router<AppState> {
 async fn login(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(app_state): State<AppState>,
+    header_map: HeaderMap,
     AuthBearer(token): AuthBearer,
     Json(data): Json<User>,
 ) -> impl IntoResponse {
@@ -47,6 +49,10 @@ async fn login(
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
+
+    if let Some(ip) = header_map.get("X-Real-IP") {
+        log_info!("IP: {}", ip.to_str().unwrap_or_default());
+    }
 
     let pool = app_state.pool;
     if let Some(check) = data.verify_login(&pool).await {
@@ -161,7 +167,7 @@ async fn user_update(
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
-    
+
     let res = if data.password.is_some() {
         data.update_password(&app_state.pool).await
     } else if data.status.is_some() {
@@ -169,7 +175,7 @@ async fn user_update(
     } else {
         data.update(&app_state.pool).await
     };
-    
+
     if let Ok(r) = res {
         (StatusCode::OK, Json(r.rows_affected()))
     } else {
