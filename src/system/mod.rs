@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use crate::AppState;
 use argon2::{
     password_hash::{
@@ -7,7 +8,7 @@ use argon2::{
     },
     Argon2
 };
-use axum::extract::{Path, State};
+use axum::extract::{ConnectInfo, Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, head, post};
@@ -35,11 +36,12 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn login(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(app_state): State<AppState>,
     AuthBearer(token): AuthBearer,
     Json(data): Json<User>,
 ) -> impl IntoResponse {
-    log_info!("{}", &token);
+    log_info!("Login Info\n* Token: {}\n* Addr: {}", &token, addr);
     // ********************鉴权********************
     if !token.eq("cfa*login*auth") {
         return (StatusCode::UNAUTHORIZED, Json::default());

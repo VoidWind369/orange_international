@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use crate::util::Config;
 use axum::routing::get;
 use axum::{Router};
@@ -38,7 +39,7 @@ pub async fn run() {
         .layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind(&address).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
 }
 
 #[tokio::main]
