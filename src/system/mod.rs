@@ -1,12 +1,7 @@
 use crate::AppState;
 use argon2::{
     Argon2,
-    password_hash::{
-        PasswordHasher,
-        SaltString,
-        // `OsRng` requires enabled `std` crate feature
-        rand_core::OsRng,
-    },
+    password_hash::{PasswordHasher, SaltString},
 };
 use axum::extract::{ConnectInfo, Path, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -14,15 +9,18 @@ use axum::response::IntoResponse;
 use axum::routing::{get, head, post};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
+use chrono::Utc;
 use std::net::SocketAddr;
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
 
 mod group;
+mod login_log;
 mod redis;
 mod role;
 mod user;
 
+use crate::system::login_log::LoginLog;
 pub use group::Group;
 pub use redis::UserInfo;
 pub use user::User;
@@ -50,12 +48,21 @@ async fn login(
     }
     // ********************鉴权********************
 
-    if let Some(ip) = header_map.get("X-Real-IP") {
-        log_info!("IP: {}", ip.to_str().unwrap_or_default());
-    }
+    let ip = if let Some(ip) = header_map.get("X-Real-IP") {
+        let ip = ip.to_str().unwrap_or_default();
+        log_info!("IP: {}", ip);
+        ip
+    } else {
+        "NONE"
+    };
 
-    let pool = app_state.pool;
-    if let Some(check) = data.verify_login(&pool).await {
+    if let Some(check) = data.verify_login(&app_state.pool).await {
+        // 添加登陆记录
+        LoginLog::new(check.get_id(), Utc::now(), ip.to_string())
+            .await
+            .insert(&app_state.pool)
+            .await
+            .unwrap_or_default();
         (StatusCode::OK, Json(check))
     } else {
         (StatusCode::UNAUTHORIZED, Json::default())
@@ -205,7 +212,7 @@ async fn user_delete(
 
 async fn password(Path(password): Path<String>) -> impl IntoResponse {
     // 密码Hash加密
-    let salt = SaltString::try_from_rng(&mut OsRng).unwrap();
+    let salt = SaltString::generate();
     let argon2 = Argon2::default();
     argon2
         .hash_password(password.as_bytes(), &salt)

@@ -159,9 +159,9 @@ impl User {
 
 impl UserInfo {
     pub async fn user_clans(&self, pool: &Pool<Postgres>) -> Result<Vec<Clan>, Error> {
-        log_info!("From Redis {}", &self.id);
+        log_info!("From Redis {}", &self.get_id());
         query_as("select c.* from orange.clan c, orange.clan_user cu where c.id = cu.clan_id and cu.user_id = $1 and c.status = 1")
-            .bind(&self.id).fetch_all(pool).await
+            .bind(&self.get_id()).fetch_all(pool).await
     }
 }
 

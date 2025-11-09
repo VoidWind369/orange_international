@@ -1,13 +1,15 @@
 use crate::orange::{Clan, ClanUser};
-use crate::system::role::Role;
 use crate::system::UserInfo;
-use argon2::password_hash::rand_core::OsRng;
-use argon2::password_hash::SaltString;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use crate::system::role::Role;
+use argon2::{
+    Argon2,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
+use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::{log_error, log_info, log_warn};
 
@@ -27,10 +29,26 @@ pub struct User {
     pub password: Option<String>,
 }
 
+impl Display for User {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}\n - Name: {}\n - Email: {}\n - Code: {}\n - Phone: {}\n - Create: {}\n - Update: {}",
+            self.id.as_ref().unwrap_or(&Uuid::default()),
+            self.name.as_ref().unwrap_or(&String::new()),
+            self.email.as_ref().unwrap_or(&String::new()),
+            self.code.as_ref().unwrap_or(&String::new()),
+            self.phone.as_ref().unwrap_or(&String::new()),
+            self.create_time.to_rfc2822(),
+            self.update_time.to_rfc2822(),
+        )
+    }
+}
+
 impl User {
     fn get_password_hash(&self) -> String {
         // 密码Hash加密
-        let salt = SaltString::try_from_rng(&mut OsRng).unwrap();
+        let salt = SaltString::generate();
         let argon2 = Argon2::default();
         argon2
             .hash_password(&self.password.clone().unwrap().as_bytes(), &salt)
@@ -157,7 +175,7 @@ impl User {
         .fetch_one(pool)
         .await
         .unwrap_or_default();
-        log_info!("{:?}", &data_user);
+        log_info!("{}", &data_user);
         // 查部落
         let user_clans = data_user.user_clans(pool).await.unwrap();
         // 查权限组
@@ -170,8 +188,6 @@ impl User {
         }
         // 去重
         user_roles.dedup();
-        log_info!("{:?}", &user_clans);
-        log_info!("{:?}", &user_roles);
         // 通过查到的用户数据校验
         data_user
             .verify_password(&self.password.clone().unwrap(), user_clans, user_roles)
