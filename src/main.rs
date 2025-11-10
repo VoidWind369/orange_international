@@ -11,6 +11,7 @@ mod orange;
 mod system;
 mod util;
 mod middle;
+mod safety;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -35,6 +36,7 @@ pub async fn run() {
         .nest("/system", system::router())
         .nest("/orange", orange::router())
         .nest("/middle", middle::router())
+        .nest("/safety", safety::router())
         .with_state(app_state)
         .layer(CorsLayer::permissive());
 
