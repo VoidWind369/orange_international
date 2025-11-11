@@ -20,10 +20,10 @@ mod redis;
 mod role;
 mod user;
 
-use crate::system::login_log::LoginLog;
 pub use group::Group;
 pub use redis::UserInfo;
 pub use user::User;
+pub use login_log::LoginLog;
 
 pub fn router() -> Router<AppState> {
     Router::new()

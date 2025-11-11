@@ -298,12 +298,12 @@ async fn round_insert(
         let rows_affected = res.unwrap_or_default().rows_affected();
         (
             StatusCode::OK,
-            RestApi::new("Succeeded", "发布成功", Some(rows_affected as i64)),
+            RestApi::new("Succeeded", "发布成功", Some(rows_affected as i64)).builder(),
         )
     } else {
         (
             StatusCode::UNPROCESSABLE_ENTITY,
-            RestApi::new("Error: Time String", "失败: 格式错误", Some(-2)),
+            RestApi::new("Error: Time String", "失败: 格式错误", Some(-2)).builder(),
         )
     }
 }

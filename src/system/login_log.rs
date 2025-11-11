@@ -1,8 +1,7 @@
-use crate::system::User;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 
@@ -36,10 +35,23 @@ impl LoginLog {
         }
     }
 
-    pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
+    pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
+        query_as("select ll.*, u.code, u.name from public.login_log ll, public.user u where ll.user_id = u.id")
+            .fetch_all(pool)
+            .await
+    }
+
+    pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Vec<Self>, Error> {
         query_as("select ll.*, u.code, u.name from public.login_log ll, public.user u where ll.user_id = u.id and ll.user_id = $1")
             .bind(id)
-            .fetch_one(pool)
+            .fetch_all(pool)
+            .await
+    }
+
+    pub async fn select_code_or_name(pool: &Pool<Postgres>, text: String) -> Result<Vec<Self>, Error> {
+        query_as("select ll.*, u.code, u.name from public.login_log ll, public.user u where ll.user_id = u.id and (u.code = $1 or u.name = $1)")
+            .bind(text)
+            .fetch_all(pool)
             .await
     }
 
