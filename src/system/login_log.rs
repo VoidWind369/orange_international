@@ -49,7 +49,8 @@ impl LoginLog {
     }
 
     pub async fn select_code_or_name(pool: &Pool<Postgres>, text: String) -> Result<Vec<Self>, Error> {
-        query_as("select ll.*, u.code, u.name from public.login_log ll, public.user u where ll.user_id = u.id and u.code not like '%admin%' and (u.code = $1 or u.name = $1)")
+        let text = format!("%{text}%");
+        query_as("select ll.*, u.code, u.name from public.login_log ll, public.user u where ll.user_id = u.id and u.code not like '%admin%' and (u.code like $1 or u.name like $1)")
             .bind(text)
             .fetch_all(pool)
             .await
