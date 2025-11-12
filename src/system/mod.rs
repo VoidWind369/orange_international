@@ -11,6 +11,7 @@ use axum::{Json, Router};
 use axum_auth::AuthBearer;
 use chrono::Utc;
 use std::net::SocketAddr;
+use axum_msgpack::{MsgPack, MsgPackRaw};
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
 
@@ -39,7 +40,7 @@ async fn login(
     State(app_state): State<AppState>,
     header_map: HeaderMap,
     AuthBearer(token): AuthBearer,
-    Json(data): Json<User>,
+    MsgPackRaw(data): MsgPackRaw<User>,
 ) -> impl IntoResponse {
     log_info!("Login Info\n* Token: {}\n* Addr: {}", &token, addr);
     // ********************鉴权********************
