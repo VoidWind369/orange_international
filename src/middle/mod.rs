@@ -1,8 +1,9 @@
+mod read_compo;
 /// # 中间库Api
 mod track;
 
 use crate::AppState;
-use crate::api::{MiddleRoundApi, MiddleTrackApi};
+use crate::api::{MiddleReadCompo, MiddleRoundApi, MiddleTrackApi};
 use crate::system::UserInfo;
 use crate::util::RestApi;
 use axum::extract::{Path, State};
@@ -20,6 +21,7 @@ pub fn router() -> Router<AppState> {
         .route("/track/{tag}", get(track_tag))
         // 时间发布相关
         .route("/round", get(round_insert))
+        .route("/read_compo", get(read_compo))
 }
 
 async fn track_tag(
@@ -75,7 +77,11 @@ async fn round_insert(
 ) -> impl IntoResponse {
     // ********************鉴权********************
     log_info!("User Token {}", token);
-    if !UserInfo::get_user(&token).await.unwrap().check_role("admin") {
+    if !UserInfo::get_user(&token)
+        .await
+        .unwrap()
+        .check_role("admin")
+    {
         log_warn!("UNAUTHORIZED");
         return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
@@ -83,9 +89,17 @@ async fn round_insert(
 
     match MiddleRoundApi::get().await.new_round(&app_state.pool).await {
         Ok(res) => (StatusCode::OK, RestApi::successful(res)),
-        Err(e) => (
-            StatusCode::GONE,
-            RestApi::failed("Round Not Update", &e),
-        ),
+        Err(e) => (StatusCode::GONE, RestApi::failed("Round Not Update", &e)),
     }
+}
+
+async fn read_compo() -> impl IntoResponse {
+    // ********************鉴权********************
+    // if !token.eq("middle*read*compo") {
+    //     return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
+    // }
+    // ********************鉴权********************
+
+    let res = MiddleReadCompo::get().await;
+    (StatusCode::OK, RestApi::new_successful(res).builder_msgpack())
 }
