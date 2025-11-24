@@ -1,17 +1,21 @@
-use std::net::SocketAddr;
 use crate::util::Config;
+use axum::Router;
 use axum::routing::get;
-use axum::{Router};
+use axum_server::tls_rustls::RustlsConfig;
 use sqlx::{Pool, Postgres};
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::str::FromStr;
 use tower_http::cors::CorsLayer;
+use tower_http::services::{ServeDir, ServeFile};
 use void_log::log_info;
 
 mod api;
+mod middle;
 mod orange;
+mod safety;
 mod system;
 mod util;
-mod middle;
-mod safety;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -29,6 +33,7 @@ pub async fn run() {
     };
 
     let address = format!("{}:{}", &server.get_path(), &server.get_port());
+    let address = SocketAddr::from_str(&address).unwrap();
     log_info!("启动参数: {}", &address);
 
     let app = Router::new()
@@ -37,11 +42,30 @@ pub async fn run() {
         .nest("/orange", orange::router())
         .nest("/middle", middle::router())
         .nest("/safety", safety::router())
-        .with_state(app_state)
+        .with_state(app_state);
+
+    let serve_dir = ServeDir::new("public").not_found_service(ServeFile::new("public/index.html"));
+
+    let app = Router::new()
+        .nest("/api", app)
+        .fallback_service(serve_dir)
         .layer(CorsLayer::permissive());
 
-    let listener = tokio::net::TcpListener::bind(&address).await.unwrap();
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
+    if let Some(pem) = server.get_pem_path() {
+        let tls_config =
+            RustlsConfig::from_pem_file(PathBuf::from(pem.cert), PathBuf::from(pem.key))
+                .await
+                .unwrap();
+        axum_server::bind_rustls(address, tls_config)
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    } else {
+        axum_server::bind(address)
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    }
 }
 
 #[tokio::main]

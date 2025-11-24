@@ -21,6 +21,13 @@ pub struct ConfigServer {
     url: Option<String>,
     path: Option<String>,
     port: Option<u16>,
+    pem_path: Option<ConfigServerTls>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConfigServerTls {
+    pub cert: String,
+    pub key: String,
 }
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
@@ -79,6 +86,7 @@ impl Default for ConfigServer {
             path: Some("0.0.0.0".to_string()),
             port: Some(50000),
             url: Some("0.0.0.0:50000".to_string()),
+            pem_path: None,
         }
     }
 }
@@ -97,6 +105,10 @@ impl ConfigServer {
 
     pub fn get_path(&self) -> String {
         self.path.as_ref().unwrap_or(&"0.0.0.0".to_string()).clone()
+    }
+    
+    pub fn get_pem_path(&self) -> Option<ConfigServerTls> {
+        self.pem_path.clone()
     }
 }
 
