@@ -42,27 +42,27 @@ pub async fn run() {
         .nest("/orange", orange::router())
         .nest("/middle", middle::router())
         .nest("/safety", safety::router())
-        .with_state(app_state);
+        .with_state(app_state)
+        .layer(CorsLayer::permissive());
 
     let serve_dir = ServeDir::new("public").not_found_service(ServeFile::new("public/index.html"));
 
-    let app = Router::new()
-        .nest("/api", app)
-        .fallback_service(serve_dir)
-        .layer(CorsLayer::permissive());
+    let app = Router::new().nest("/api", app).fallback_service(serve_dir);
 
     if let Some(pem) = server.get_pem_path() {
+        log_info!("TLS is on");
         let tls_config =
             RustlsConfig::from_pem_file(PathBuf::from(pem.cert), PathBuf::from(pem.key))
                 .await
                 .unwrap();
         axum_server::bind_rustls(address, tls_config)
-            .serve(app.into_make_service())
+            .serve(app.into_make_service_with_connect_info::<SocketAddr>())
             .await
             .unwrap();
     } else {
+        log_info!("TLS is off");
         axum_server::bind(address)
-            .serve(app.into_make_service())
+            .serve(app.into_make_service_with_connect_info::<SocketAddr>())
             .await
             .unwrap();
     }
