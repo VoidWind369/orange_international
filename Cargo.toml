@@ -24,4 +24,3 @@ void_log = "0.1.2"
 chrono = { version = "0.4.42", features = ["serde", "now"] }
 uuid = { version = "1.18.1", features = ["v4", "serde"] }
 argon2 = { version = "0.6.0-rc.2", features = ["std", "getrandom"] }
-bytes = "1.10.0"
