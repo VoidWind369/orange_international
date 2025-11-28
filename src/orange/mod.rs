@@ -62,7 +62,6 @@ async fn clans(
     // ********************鉴权********************
 
     let res = Clan::select_all(&app_state.pool).await.unwrap();
-    log_info!("{:?}", res);
     (StatusCode::OK, Json(res))
 }
 
@@ -80,7 +79,6 @@ async fn clan(
 
     let res = Clan::select(&app_state.pool, id).await;
     if let Ok(r) = res {
-        log_info!("{:?}", r);
         (StatusCode::OK, Json(r))
     } else {
         (StatusCode::GONE, Json::default())
@@ -135,7 +133,6 @@ async fn clan_search(
 
     log_info!("Clan {}", &text);
     if let Ok(clan) = Clan::select_search(&app_state.pool, &text).await {
-        log_info!("{:?}", clan);
         (StatusCode::OK, Json(clan))
     } else {
         (StatusCode::GONE, Json::default())

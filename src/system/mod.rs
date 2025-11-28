@@ -104,7 +104,6 @@ async fn users(
     // ********************鉴权********************
 
     let res = User::select_all(&app_state.pool).await.unwrap();
-    log_info!("{:?}", res);
     (StatusCode::OK, Json(res))
 }
 
@@ -121,7 +120,6 @@ async fn user(
     // ********************鉴权********************
 
     let res = User::select(&app_state.pool, id).await.unwrap();
-    log_info!("{:?}", res);
     (StatusCode::OK, Json(res))
 }
 
@@ -137,7 +135,6 @@ async fn user_search(
     }
     // ********************鉴权********************
     if let Ok(user) = User::select_search(&app_state.pool, &text).await {
-        log_info!("{:?}", user);
         (StatusCode::OK, Json(user))
     } else {
         (StatusCode::GONE, Json::default())
