@@ -173,6 +173,7 @@ async fn user_update(
     }
     // ********************鉴权********************
 
+    log_info!("Updated: {}", &data);
     let res = if data.password.is_some() {
         data.update_password(&app_state.pool).await
     } else if data.status.is_some() {

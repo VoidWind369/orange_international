@@ -33,7 +33,7 @@ impl Display for User {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}\n - Name: {}\n - Email: {}\n - Code: {}\n - Phone: {}\n - Create: {}\n - Update: {}",
+            "{}\n - Name: {}\n - Email: {}\n - Code: {}\n - Phone: {}\n - Create: {}\n - Update: {}\n - Password: {}",
             self.id.as_ref().unwrap_or(&Uuid::default()),
             self.name.as_ref().unwrap_or(&String::new()),
             self.email.as_ref().unwrap_or(&String::new()),
@@ -41,6 +41,7 @@ impl Display for User {
             self.phone.as_ref().unwrap_or(&String::new()),
             self.create_time.to_rfc2822(),
             self.update_time.to_rfc2822(),
+            self.password.as_ref().unwrap_or(&String::new())
         )
     }
 }
