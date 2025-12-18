@@ -429,26 +429,26 @@ async fn new_track(
     log_info!("登记0: 本家标签 {} | 对家标签 {}", &self_tag, &rival_tag);
 
     // 判断先后手
-    let (self_tag, rival_tag) = if last {
-        (rival_tag, self_tag)
+    let (first_tag, last_tag) = if last {
+        (rival_tag, self_tag.clone())
     } else {
-        (self_tag, rival_tag)
+        (self_tag.clone(), rival_tag)
     };
 
-    log_info!("登记1: 先手标签 {self_tag} | 后手标签 {rival_tag}");
+    log_info!("登记1: 先手标签 {first_tag} | 后手标签 {last_tag}");
 
-    // 查询本家加盟状态
-    let self_clan = Clan::select_tag(&app_state.pool, &self_tag, is_global).await;
+    // 查询先手加盟状态
+    let first_clan = Clan::select_tag(&app_state.pool, &first_tag, is_global).await;
 
-    // 查询对家加盟状态
-    let rival_clan = Clan::select_tag(&app_state.pool, &rival_tag, is_global).await;
+    // 查询后手加盟状态
+    let last_clan = Clan::select_tag(&app_state.pool, &last_tag, is_global).await;
 
-    // 本家积分数据
-    let (self_point, has_self_tracks) = if let Ok(ref clan) = self_clan {
+    // 先手积分数据
+    let (first_point, has_first_tracks) = if let Ok(ref clan) = first_clan {
         if clan.status.is_some_and(|x| x == 1) {
-            log_info!("登记2: 本家加盟状态 {}", &clan);
+            log_info!("登记2: 先手加盟状态 {}", &clan);
             let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
-            log_info!("登记3: 本家积分状态 {}", &point);
+            log_info!("登记3: 先手积分状态 {}", &point);
             point.clan_id = clan.id.unwrap_or_default();
 
             let cst = Track::select_round(&app_state.pool, point.clan_id)
@@ -457,20 +457,20 @@ async fn new_track(
 
             (Some(point), !cst.is_empty())
         } else {
-            log_warn!("登记2: 本家部落异常");
+            log_warn!("登记2: 先手部落异常");
             (None, false)
         }
     } else {
-        log_warn!("登记2: 标签错误");
+        log_warn!("登记2: 先手盟外部落");
         (None, false)
     };
 
-    // 对家积分数据
-    let (rival_point, has_rival_tracks) = if let Ok(ref clan) = rival_clan {
+    // 后手积分数据
+    let (last_point, has_last_tracks) = if let Ok(ref clan) = last_clan {
         if clan.status.is_some_and(|x| x == 1) {
-            log_info!("登记2: 对家加盟状态 {}", &clan);
+            log_info!("登记2: 后手加盟状态 {}", &clan);
             let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
-            log_info!("登记3: 对家积分状态 {}", &point);
+            log_info!("登记3: 后手积分状态 {}", &point);
             point.clan_id = clan.id.unwrap_or_default();
 
             let crt = Track::select_round(&app_state.pool, point.clan_id)
@@ -479,22 +479,22 @@ async fn new_track(
 
             (Some(point), !crt.is_empty())
         } else {
-            log_warn!("登记2: 对面部落异常");
+            log_warn!("登记2: 后手部落异常");
             (None, false)
         }
     } else {
-        log_warn!("登记2: 盟外部落");
+        log_warn!("登记2: 后手盟外部落");
         (None, false)
     };
 
     // 本轮已登记直接返回
-    if let Ok(track) = Track::select_registered(&app_state.pool, &self_point, &round).await {
+    if let Ok(track) = Track::select_registered(&app_state.pool, &first_point, &round).await {
         log_info!("已登记 {}", track);
         return (StatusCode::OK, RestApi::successful(track));
     };
 
     // 预查限制重复登记
-    if has_self_tracks || has_rival_tracks {
+    if has_first_tracks || has_last_tracks {
         log_warn!("预查重复登记");
         return (
             StatusCode::CONFLICT,
@@ -505,8 +505,8 @@ async fn new_track(
     // 添加Track获取输赢（本盟/中间库）
     let track = Track::new(
         &app_state.pool,
-        self_point,
-        rival_point,
+        first_point,
+        last_point,
         &self_tag,
         is_global,
     )
@@ -521,7 +521,7 @@ async fn new_track(
     };
 
     // 更新self
-    let self_point = if self_clan.is_ok() {
+    let self_point = if first_clan.is_ok() {
         ClanPoint::new(track.self_clan_id, track.self_now_point)
             .insert_or_update(&app_state.pool)
             .await
@@ -532,7 +532,7 @@ async fn new_track(
     };
 
     // 更新rival
-    let rival_point = if rival_clan.is_ok() {
+    let rival_point = if last_clan.is_ok() {
         ClanPoint::new(track.rival_clan_id, track.rival_now_point)
             .insert_or_update(&app_state.pool)
             .await

@@ -72,6 +72,7 @@ impl MiddleApi {
         self_tag: &str,
     ) -> Track {
         log_info!("{}", &self);
+
         // 格式化对方tag(不战可能反转了my_tag)
         let my_tag = format!("#{}", self.my_tag.replace("#", ""));
         let opp_tag = format!("#{}", self.opp_tag.replace("#", ""));
