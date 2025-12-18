@@ -1,5 +1,5 @@
 use crate::api::MiddleApi;
-use crate::orange::Round;
+use crate::orange::{Clan, Round};
 use crate::orange::clan_point::ClanPoint;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -146,7 +146,7 @@ impl Track {
         pool: &Pool<Postgres>,
         self_clan_point: Option<ClanPoint>,
         rival_clan_point: Option<ClanPoint>,
-        self_tag: &str,
+        self_tag: &Clan,
         is_global: bool,
     ) -> Self {
         let round = Round::select_last(pool).await.unwrap_or_default();

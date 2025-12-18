@@ -429,26 +429,33 @@ async fn new_track(
     log_info!("登记0: 本家标签 {} | 对家标签 {}", &self_tag, &rival_tag);
 
     // 判断先后手
-    let (first_tag, last_tag) = if last {
-        (rival_tag, self_tag.clone())
-    } else {
-        (self_tag.clone(), rival_tag)
-    };
+    // let (first_tag, last_tag) = if last {
+    //     (rival_tag, self_tag.clone())
+    // } else {
+    //     (self_tag.clone(), rival_tag)
+    // };
 
-    log_info!("登记1: 先手标签 {first_tag} | 后手标签 {last_tag}");
+    // log_info!("登记1: 先手标签 {first_tag} | 后手标签 {last_tag}");
 
     // 查询先手加盟状态
-    let first_clan = Clan::select_tag(&app_state.pool, &first_tag, is_global).await;
+    let self_clan = Clan::select_tag(&app_state.pool, &self_tag, is_global).await;
 
     // 查询后手加盟状态
-    let last_clan = Clan::select_tag(&app_state.pool, &last_tag, is_global).await;
+    let rival_clan = Clan::select_tag(&app_state.pool, &rival_tag, is_global).await;
+
+    // 判断先后手
+    let (first_clan, last_clan) = if last {
+        (rival_clan.as_ref(), self_clan.as_ref())
+    } else {
+        (self_clan.as_ref(), rival_clan.as_ref())
+    };
 
     // 先手积分数据
-    let (first_point, has_first_tracks) = if let Ok(ref clan) = first_clan {
+    let (first_point, has_first_tracks) = if let Ok(clan) = first_clan {
         if clan.status.is_some_and(|x| x == 1) {
-            log_info!("登记2: 先手加盟状态 {}", &clan);
+            log_info!("登记1: 先手加盟状态 {}", &clan);
             let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
-            log_info!("登记3: 先手积分状态 {}", &point);
+            log_info!("登记2: 先手积分状态 {}", &point);
             point.clan_id = clan.id.unwrap_or_default();
 
             let cst = Track::select_round(&app_state.pool, point.clan_id)
@@ -457,20 +464,20 @@ async fn new_track(
 
             (Some(point), !cst.is_empty())
         } else {
-            log_warn!("登记2: 先手部落异常");
+            log_warn!("登记1: 先手部落异常");
             (None, false)
         }
     } else {
-        log_warn!("登记2: 先手盟外部落");
+        log_warn!("登记1: 先手盟外部落");
         (None, false)
     };
 
     // 后手积分数据
-    let (last_point, has_last_tracks) = if let Ok(ref clan) = last_clan {
+    let (last_point, has_last_tracks) = if let Ok(clan) = last_clan {
         if clan.status.is_some_and(|x| x == 1) {
-            log_info!("登记2: 后手加盟状态 {}", &clan);
+            log_info!("登记1: 后手加盟状态 {}", &clan);
             let mut point = clan.point_select(&app_state.pool).await.unwrap_or_default();
-            log_info!("登记3: 后手积分状态 {}", &point);
+            log_info!("登记2: 后手积分状态 {}", &point);
             point.clan_id = clan.id.unwrap_or_default();
 
             let crt = Track::select_round(&app_state.pool, point.clan_id)
@@ -479,11 +486,11 @@ async fn new_track(
 
             (Some(point), !crt.is_empty())
         } else {
-            log_warn!("登记2: 后手部落异常");
+            log_warn!("登记1: 后手部落异常");
             (None, false)
         }
     } else {
-        log_warn!("登记2: 后手盟外部落");
+        log_warn!("登记1: 后手盟外部落");
         (None, false)
     };
 
@@ -502,12 +509,20 @@ async fn new_track(
         );
     }
 
+    let self_clan = if let Ok(clan) = self_clan.as_ref() {
+        clan
+    } else {
+        return (
+            StatusCode::CONFLICT,
+            RestApi::failed("Self Clan Abnormal", "本方部落异常"),
+        ); 
+    };
     // 添加Track获取输赢（本盟/中间库）
     let track = Track::new(
         &app_state.pool,
         first_point,
         last_point,
-        &self_tag,
+        self_clan,
         is_global,
     )
     .await;

@@ -50,9 +50,9 @@ impl Display for MiddleApi {
 }
 
 impl MiddleApi {
-    pub async fn new(tag: &str, is_global: bool) -> reqwest::Result<Self> {
+    pub async fn new(clan: &Clan, is_global: bool) -> reqwest::Result<Self> {
         let body = json!({
-            "myTag": tag,
+            "myTag": clan.tag,
             "isGlobal": is_global,
         });
         let response = Client::new()
@@ -69,20 +69,22 @@ impl MiddleApi {
         pool: &Pool<Postgres>,
         mut track: Track,
         is_global: bool,
-        self_tag: &str,
+        self_clan: &Clan,
     ) -> Track {
         log_info!("{}", &self);
 
         // 格式化对方tag(不战可能反转了my_tag)
         let my_tag = format!("#{}", self.my_tag.replace("#", ""));
         let opp_tag = format!("#{}", self.opp_tag.replace("#", ""));
-        let (rival_tag, rival_name, self_name) = if my_tag.eq(self_tag) {
-            (opp_tag, self.opp_name.clone(), self.my_name.clone())
-        } else {
-            (my_tag, self.my_name.clone(), self.opp_name.clone())
-        };
+        let (rival_tag, rival_name, self_name) =
+            if self_clan.tag.as_ref().is_some_and(|tag| my_tag.eq(tag)) {
+                (opp_tag, self.opp_name.clone(), self.my_name.clone())
+            } else {
+                (my_tag, self.my_name.clone(), self.opp_name.clone())
+            };
 
-        track.self_tag = Some(self_tag.to_string());
+        track.self_clan_id = self_clan.id.unwrap_or_default();
+        track.self_tag = self_clan.tag.clone();
         track.self_name = self_name;
         track.self_now_point = track.self_history_point;
 
