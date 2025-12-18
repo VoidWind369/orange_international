@@ -3,6 +3,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{Pool, Postgres};
+use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::log_info;
 
@@ -24,6 +25,28 @@ pub struct MiddleApi {
     match_strategy: Option<String>,
     round_score: i64,
     err: bool,
+}
+
+impl Display for MiddleApi {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "MiddleApi \n - my: {} | {}\n - opp: {} | {}\n - match_type: {}\n - win: {} | {}\n - explain_ch: {}\n - explain_en: {}\n - email: {}\n - match_strategy: {}\n - round_score: {}\n - err: {}",
+            self.my_tag,
+            self.my_name.unwrap_or_default(),
+            self.opp_tag,
+            self.opp_name.unwrap_or_default(),
+            self.match_type.unwrap_or_default(),
+            self.win_tag,
+            self.win_name.unwrap_or_default(),
+            self.explain_ch.unwrap_or_default(),
+            self.explain_en.unwrap_or_default(),
+            self.email.unwrap_or_default(),
+            self.match_strategy.unwrap_or_default(),
+            self.round_score,
+            self.err,
+        )
+    }
 }
 
 impl MiddleApi {
@@ -48,6 +71,7 @@ impl MiddleApi {
         is_global: bool,
         self_tag: &str,
     ) -> Track {
+        log_info!("{}", &self);
         // 格式化对方tag(不战可能反转了my_tag)
         let my_tag = format!("#{}", self.my_tag.replace("#", ""));
         let opp_tag = format!("#{}", self.opp_tag.replace("#", ""));
