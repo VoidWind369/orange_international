@@ -1,7 +1,7 @@
 use crate::AppState;
 use argon2::{
+    password_hash::PasswordHasher,
     Argon2,
-    password_hash::{PasswordHasher, SaltString},
 };
 use axum::extract::{ConnectInfo, Path, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -9,9 +9,9 @@ use axum::response::IntoResponse;
 use axum::routing::{get, head, post};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
+use axum_msgpack::MsgPackRaw;
 use chrono::Utc;
 use std::net::SocketAddr;
-use axum_msgpack::{MsgPack, MsgPackRaw};
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
 
@@ -22,9 +22,9 @@ mod role;
 mod user;
 
 pub use group::Group;
+pub use login_log::LoginLog;
 pub use redis::UserInfo;
 pub use user::User;
-pub use login_log::LoginLog;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -211,10 +211,9 @@ async fn user_delete(
 
 async fn password(Path(password): Path<String>) -> impl IntoResponse {
     // 密码Hash加密
-    let salt = SaltString::generate();
     let argon2 = Argon2::default();
     argon2
-        .hash_password(password.as_bytes(), &salt)
+        .hash_password(password.as_bytes())
         .unwrap()
         .to_string()
 }

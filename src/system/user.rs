@@ -3,7 +3,7 @@ use crate::system::UserInfo;
 use crate::system::role::Role;
 use argon2::{
     Argon2,
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    password_hash::{phc::PasswordHash, PasswordHasher, PasswordVerifier},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -49,10 +49,9 @@ impl Display for User {
 impl User {
     fn get_password_hash(&self) -> String {
         // 密码Hash加密
-        let salt = SaltString::generate();
         let argon2 = Argon2::default();
         argon2
-            .hash_password(&self.password.clone().unwrap().as_bytes(), &salt)
+            .hash_password(&self.password.clone().unwrap().as_bytes())
             .unwrap()
             .to_string()
     }
