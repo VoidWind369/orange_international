@@ -22,6 +22,7 @@ pub struct OperateLog {
     pub name: String,
     #[serde(skip_deserializing)]
     pub round_code: String,
+    pub remarks: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -55,11 +56,12 @@ impl OperateLog {
     }
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        query("insert into orange.operate_log values (DEFAULT, $1, $2, $3, $4)")
+        query("insert into orange.operate_log values (DEFAULT, $1, $2, $3, $4, $5)")
             .bind(&self.round_id)
             .bind(&self.text)
             .bind(Utc::now())
             .bind(&self.clan_id)
+            .bind(&self.remarks)
             .execute(pool)
             .await
     }
