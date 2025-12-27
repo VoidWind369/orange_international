@@ -1,6 +1,6 @@
 use crate::api::MiddleApi;
-use crate::orange::{Clan, Round};
 use crate::orange::clan_point::ClanPoint;
+use crate::orange::{Clan, Round};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -51,6 +51,8 @@ pub enum TrackType {
     Internal = 1, // 内部
     /// # 友盟
     Alliance = 2, // 友盟
+    /// # 黑名单
+    Blacklist = 3, // 黑名单
     /// # 奖励局
     Award = 11,
     /// # 处罚局
