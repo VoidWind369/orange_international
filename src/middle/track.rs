@@ -1,4 +1,4 @@
-use crate::api::{MiddleTrackApiDetails, MiddleViewApi};
+use crate::api::{MiddleViewApi, MiddleViewApiDetails};
 use chrono::{DateTime, Utc};
 use sqlx::postgres::PgQueryResult;
 use sqlx::types::Json;
@@ -12,7 +12,7 @@ pub struct Track {
     pub server: String,
     pub bz_total_score: i64,
     pub public_total_score: i64,
-    pub details: Json<Vec<MiddleTrackApiDetails>>,
+    pub details: Json<Vec<MiddleViewApiDetails>>,
     pub summary: Vec<String>,
     pub create_time: DateTime<Utc>,
     pub update_time: DateTime<Utc>,

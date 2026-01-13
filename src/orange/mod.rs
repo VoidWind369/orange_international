@@ -451,7 +451,7 @@ async fn new_track(
     // 查询对家加盟状态
     let rival_clan = Clan::select_tag(&app_state.pool, &rival_tag, is_global)
         .await
-        .unwrap_or_else(|e| {
+        .unwrap_or_else(|_| {
             log_warn!("登记1: 对家部落不存在");
             Default::default()
         });
@@ -517,7 +517,7 @@ async fn new_track(
             RestApi::failed("Repeat Track", "重复登记"),
         );
     }
-    
+
     // 添加Track获取输赢（本盟/中间库）
     let track = Track::new(
         &app_state.pool,
