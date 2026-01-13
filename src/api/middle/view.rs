@@ -5,12 +5,12 @@ use sqlx::types::Json;
 use void_log::log_info;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-pub struct MiddleTrackApi {
+pub struct MiddleViewApi {
     pub server: String,
     #[serde(alias = "bzlm_total_score")]
     pub bz_total_score: i64,
     pub public_total_score: i64,
-    pub details: Vec<MiddleTrackApiDetails>,
+    pub details: Vec<MiddleViewApiDetails>,
     pub summary: Vec<String>,
     #[serde(skip_deserializing)]
     pub tag: String,
@@ -18,7 +18,7 @@ pub struct MiddleTrackApi {
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 // #[serde(rename_all(deserialize = "camelCase"))]
-pub struct MiddleTrackApiDetails {
+pub struct MiddleViewApiDetails {
     // #[serde(rename(deserialize = "bzlmRound"))]
     #[serde(alias = "bzlmRound")]
     pub bz_round: i64,
@@ -33,16 +33,20 @@ pub struct MiddleTrackApiDetails {
     pub explain: Option<String>,
 }
 
-impl MiddleTrackApi {
+impl MiddleViewApi {
     pub async fn get(tag: &str) -> Self {
         let tag = format!("#{}", tag.replace("#", "").to_uppercase());
         let mut url = Url::parse("http://cocbzlm.com:8422/api/accinfo/scores").unwrap();
         url.query_pairs_mut().append_pair("clanTag", &tag);
         url.query_pairs_mut().append_pair("isGlobal", "true");
         log_info!("{}", &url);
-        
+
         let response = reqwest::get(url).await;
-        let mut api = response.expect("response error").json::<Self>().await.expect("failed to parse API response");
+        let mut api = response
+            .expect("response error")
+            .json::<Self>()
+            .await
+            .expect("failed to parse API response");
         api.tag = tag;
         api
     }
@@ -55,9 +59,13 @@ impl MiddleTrackApi {
         log_info!("{}", &url);
 
         let response = reqwest::get(url).await;
-        response.expect("response error").text().await.expect("failed to parse API response")
+        response
+            .expect("response error")
+            .text()
+            .await
+            .expect("failed to parse API response")
     }
-    
+
     pub fn self_to_database(self) -> middle::Track {
         middle::Track {
             server: self.server,
@@ -73,15 +81,14 @@ impl MiddleTrackApi {
 
 #[tokio::test]
 async fn test() {
-    
     let pool = crate::util::Config::get().await.get_database().get().await;
-    let a = MiddleTrackApi::get("#2J9999990").await.self_to_database();
+    let a = MiddleViewApi::get("#2J9999990").await.self_to_database();
     let b = a.insert(&pool).await.unwrap();
     log_info!("{a:?} {}", b.rows_affected());
 }
 
 #[tokio::test]
 async fn test2() {
-    let a = MiddleTrackApi::get_text("#8Q0VQJ2P").await;
+    let a = MiddleViewApi::get_text("#8Q0VQJ2P").await;
     log_info!("{a:?}");
 }

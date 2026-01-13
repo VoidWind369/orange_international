@@ -3,7 +3,7 @@ mod read_compo;
 mod track;
 
 use crate::AppState;
-use crate::api::{MiddleReadCompo, MiddleRoundApi, MiddleTrackApi};
+use crate::api::{MiddleReadCompo, MiddleRoundApi, MiddleViewApi};
 use crate::system::UserInfo;
 use crate::util::RestApi;
 use axum::extract::{Path, State};
@@ -40,7 +40,7 @@ async fn track_tag(
         Ok(r) => {
             if Utc::now() - r.update_time > chrono::Duration::hours(1) {
                 // 超过1h重新缓存
-                let mta = MiddleTrackApi::get(&tag).await;
+                let mta = MiddleViewApi::get(&tag).await;
                 let cache = mta.clone().self_to_database().update(&app_state.pool).await;
                 if let Ok(r) = cache {
                     log_info!("Update Cache {}", r.rows_affected());
@@ -58,7 +58,7 @@ async fn track_tag(
         Err(e) => {
             log_warn!("Middle Error {}", e);
             // 第一次查询新增
-            let mta = MiddleTrackApi::get(&tag).await;
+            let mta = MiddleViewApi::get(&tag).await;
             let cache = mta.clone().self_to_database().insert(&app_state.pool).await;
             if let Ok(r) = cache {
                 log_info!("Create Cache {}", r.rows_affected());
@@ -101,5 +101,8 @@ async fn read_compo() -> impl IntoResponse {
     // ********************鉴权********************
 
     let res = MiddleReadCompo::get().await;
-    (StatusCode::OK, RestApi::new_successful(res).builder_msgpack())
+    (
+        StatusCode::OK,
+        RestApi::new_successful(res).builder_msgpack(),
+    )
 }

@@ -1,4 +1,4 @@
-use crate::api::{MiddleTrackApi, MiddleTrackApiDetails};
+use crate::api::{MiddleTrackApiDetails, MiddleViewApi};
 use chrono::{DateTime, Utc};
 use sqlx::postgres::PgQueryResult;
 use sqlx::types::Json;
@@ -20,8 +20,8 @@ pub struct Track {
 }
 
 impl Track {
-    pub fn self_to_api(self) -> MiddleTrackApi {
-        MiddleTrackApi {
+    pub fn self_to_api(self) -> MiddleViewApi {
+        MiddleViewApi {
             server: self.server,
             bz_total_score: self.bz_total_score,
             public_total_score: self.public_total_score,
@@ -38,7 +38,10 @@ impl Track {
     pub async fn select_tag(pool: &Pool<Postgres>, tag: &str) -> Result<Self, Error> {
         let tag = format!("#{}", tag.replace("#", "").to_uppercase());
         log_info!("Middle Search Tag {tag}");
-        query_as("select * from middle.track where tag = $1").bind(tag).fetch_one(pool).await
+        query_as("select * from middle.track where tag = $1")
+            .bind(tag)
+            .fetch_one(pool)
+            .await
     }
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {

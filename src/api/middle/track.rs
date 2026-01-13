@@ -9,7 +9,7 @@ use void_log::log_info;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MiddleApi {
+pub struct MiddleTrackApi {
     my_tag: String,
     my_name: Option<String>,
     opp_tag: String,
@@ -27,7 +27,7 @@ pub struct MiddleApi {
     err: bool,
 }
 
-impl Display for MiddleApi {
+impl Display for MiddleTrackApi {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -49,7 +49,7 @@ impl Display for MiddleApi {
     }
 }
 
-impl MiddleApi {
+impl MiddleTrackApi {
     pub async fn new(clan: &Clan, is_global: bool) -> reqwest::Result<Self> {
         let body = json!({
             "myTag": clan.tag,

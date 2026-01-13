@@ -1,4 +1,4 @@
-use crate::api::MiddleApi;
+use crate::api::MiddleTrackApi;
 use crate::orange::clan_point::ClanPoint;
 use crate::orange::{Clan, Round};
 use chrono::{DateTime, Utc};
@@ -130,14 +130,14 @@ fn sql(sql_text: &str) -> String {
             c1.tag self_tag,
             c1.NAME self_name,
             c2.tag rival_tag,
-            c2.NAME rival_name 
+            c2.NAME rival_name
         FROM
             orange.track ot,
             orange.round r,
             orange.clan c1,
-            orange.clan c2 
+            orange.clan c2
         WHERE
-            ot.round_id = r.\"id\" 
+            ot.round_id = r.\"id\"
             AND ot.self_clan_id = c1.\"id\"
             AND ot.rival_clan_id = c2.\"id\"";
     format!("{base_sql} {sql_text}")
@@ -173,7 +173,7 @@ impl Track {
 
         // ****************Track Failed 调用中间库****************
         if track.self_clan_id == Uuid::default() || track.rival_clan_id == Uuid::default() {
-            let ma = MiddleApi::new(self_tag, is_global).await.unwrap();
+            let ma = MiddleTrackApi::new(self_tag, is_global).await.unwrap();
             return ma.check_win(pool, track, is_global, self_tag).await;
         }
         // ****************Track Failed 调用中间库****************
