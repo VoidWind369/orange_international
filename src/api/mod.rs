@@ -1,6 +1,5 @@
 mod clan;
 mod middle;
-mod middle;
 mod war;
 mod war_log;
 
