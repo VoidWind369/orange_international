@@ -64,6 +64,23 @@ impl ClanPoint {
             .await
     }
 
+    /// # 积分修正
+    /// 登记异常：配合取消登记使用
+    /// 传入修正的积分
+    pub async fn repair_point(
+        pool: &Pool<Postgres>,
+        clan_id: Uuid,
+        point: i64,
+    ) -> Result<PgQueryResult, Error> {
+        let now = Utc::now();
+        query("update orange.clan_point set point = $1, update_time = $2 where clan_id = $3")
+            .bind(point)
+            .bind(now)
+            .bind(&self.clan_id)
+            .execute(pool)
+            .await
+    }
+
     /// # 更新积分
     /// 正常登记：track记录的积分+0
     /// 改分：+add

@@ -41,7 +41,7 @@ pub fn router() -> Router<AppState> {
         .route("/last_round", get(last_round))
         // 对战记录相关
         .route("/track", get(tracks).post(new_track).delete(delete_track))
-        .route("/track/{id}", get(track_round))
+        .route("/track/{id}", get(track_round).delete(delete_track))
         // 用户关联相关
         .route("/user_clans", get(user_clans))
         .route("/user_clans/{id}", get(userid_clans))

@@ -9,7 +9,7 @@ use sqlx::types::Json;
 use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
-use void_log::log_info;
+use void_log::{log_info, log_warn};
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct Track {
@@ -378,6 +378,19 @@ impl Track {
         let round = Round::select_last(pool).await.unwrap_or_default();
         let track = Self::select(pool, id).await?;
         if track.round_id == round.get_id() {
+            let self_id = track.self_clan_id;
+            let rival_id = track.rival_clan_id;
+            let self_repair =
+                ClanPoint::repair_point(pool, track.self_clan_id, track.self_history_point)
+                    .await
+                    .is_err();
+            let rival_repair =
+                ClanPoint::repair_point(pool, track.rival_clan_id, track.rival_history_point)
+                    .await
+                    .is_err();
+            if self_repair || rival_repair {
+                log_warn!("取消外部匹配")
+            }
             query("delete from orange.track where id = $1")
                 .bind(id)
                 .execute(pool)
