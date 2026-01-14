@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
 use sqlx::types::Json;
-use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
+use sqlx::{Error, FromRow, Pool, Postgres, SqlStr, Type, query, query_as};
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
@@ -123,7 +123,7 @@ impl TrackRewardInfo {
     }
 }
 
-fn sql(sql_text: &str) -> String {
+fn sql(sql_text: &str) -> &'static str {
     let base_sql = "SELECT
             ot.*,
             r.code round_code,
@@ -140,7 +140,7 @@ fn sql(sql_text: &str) -> String {
             ot.round_id = r.\"id\"
             AND ot.self_clan_id = c1.\"id\"
             AND ot.rival_clan_id = c2.\"id\"";
-    format!("{base_sql} {sql_text}")
+    format!("{base_sql} {sql_text}").leak()
 }
 
 impl Track {
@@ -293,7 +293,7 @@ impl Track {
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as(&sql("order by create_time desc"))
+        query_as(sql("order by create_time desc"))
             .fetch_all(pool)
             .await
     }
@@ -310,7 +310,7 @@ impl Track {
             return Err(Error::ColumnNotFound("Not Found".to_string()));
         };
         log_info!("Track: Self Point {sc}");
-        query_as(&sql(
+        query_as(sql(
             "and (self_clan_id = $1 or rival_clan_id = $1) and round_id = $2",
         ))
         .bind(sc.clan_id)
@@ -324,7 +324,7 @@ impl Track {
         clan_id: Uuid,
         limit: i64,
     ) -> Result<Vec<Self>, Error> {
-        query_as(&sql(
+        query_as(sql(
             "and (self_clan_id = $1 or rival_clan_id = $1) order by create_time desc limit $2",
         ))
         .bind(clan_id)
@@ -344,15 +344,12 @@ impl Track {
         clan_id: Uuid,
         round_id: Uuid,
     ) -> Result<Vec<Self>, Error> {
-        query_as(&sql("and (ot.self_clan_id = $1 or ot.rival_clan_id = $1) and ot.round_id = $2 order by ot.create_time desc limit 1"))
+        query_as(sql("and (ot.self_clan_id = $1 or ot.rival_clan_id = $1) and ot.round_id = $2 order by ot.create_time desc limit 1"))
             .bind(clan_id).bind(round_id).fetch_all(pool).await
     }
 
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
-        query_as(&(sql("and id = $1")))
-            .bind(id)
-            .fetch_one(pool)
-            .await
+        query_as(sql("and id = $1")).bind(id).fetch_one(pool).await
     }
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
@@ -378,8 +375,6 @@ impl Track {
         let round = Round::select_last(pool).await.unwrap_or_default();
         let track = Self::select(pool, id).await?;
         if track.round_id == round.get_id() {
-            let self_id = track.self_clan_id;
-            let rival_id = track.rival_clan_id;
             let self_repair =
                 ClanPoint::repair_point(pool, track.self_clan_id, track.self_history_point)
                     .await

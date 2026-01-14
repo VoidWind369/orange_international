@@ -7,7 +7,7 @@ edition = "2024"
 tokio = { version = "1.49.0", features = ["full"] }
 tower = { version = "0.5.3", features = ["full"] }
 tower-http = { version = "0.6.8", features = ["full"] }
-sqlx = { version = "0.8.6", features = ["runtime-tokio", "chrono", "postgres", "json", "uuid"] }
+sqlx = { version = "0.9.0-alpha.1", features = ["runtime-tokio", "chrono", "postgres", "json", "uuid"] }
 redis = { version = "1.0.2", features = ["json", "uuid", "r2d2"] }
 r2d2 = "0.8.10"
 axum = { version = "0.8.8", features = ["json", "tokio"] }
