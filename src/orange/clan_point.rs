@@ -76,7 +76,7 @@ impl ClanPoint {
         query("update orange.clan_point set point = $1, update_time = $2 where clan_id = $3")
             .bind(point)
             .bind(now)
-            .bind(&self.clan_id)
+            .bind(clan_id)
             .execute(pool)
             .await
     }
