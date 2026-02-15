@@ -11,6 +11,7 @@ use tower_http::services::{ServeDir, ServeFile};
 use void_log::log_info;
 
 mod api;
+mod core;
 mod middle;
 mod orange;
 mod safety;

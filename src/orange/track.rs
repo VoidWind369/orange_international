@@ -57,6 +57,8 @@ pub enum TrackType {
     Award = 11,
     /// # 处罚局
     Penalty = 12,
+    /// # 逆转局
+    Reverse = 13,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
@@ -213,6 +215,7 @@ impl Track {
 
         // ***********************积分阶段***********************
         // 无奖励写入
+        reward_info.set_now(0, 0);
         track.set_reward_info(reward_info);
         if track.self_history_point < track.rival_history_point {
             // self < rival

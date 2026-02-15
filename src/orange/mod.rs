@@ -6,7 +6,8 @@ mod series;
 mod track;
 
 use crate::api::War;
-use crate::orange::clan_point::ClanPoint;
+use crate::core::registration;
+pub use crate::orange::clan_point::ClanPoint;
 use crate::orange::operate_log::{OperateLog, RewardType};
 use crate::system::{User, UserInfo};
 use crate::util::RestApi;
@@ -41,7 +42,10 @@ pub fn router() -> Router<AppState> {
         .route("/last_round", get(last_round))
         // 对战记录相关
         .route("/track", get(tracks).post(new_track).delete(delete_track))
-        .route("/track/{id}", get(track_round).delete(delete_track))
+        .route(
+            "/track/{id}",
+            get(track_round).post(reverse_track).delete(delete_track),
+        )
         // 用户关联相关
         .route("/user_clans", get(user_clans))
         .route("/user_clans/{id}", get(userid_clans))
@@ -566,6 +570,36 @@ async fn new_track(
 
     log_info!("新登记 {}", track);
     (StatusCode::OK, RestApi::successful(track))
+}
+
+async fn reverse_track(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (
+            StatusCode::UNAUTHORIZED,
+            RestApi::new_unauthorized().builder(),
+        );
+    }
+    // ********************鉴权********************
+
+    let res = registration::reverse(&app_state.pool, id).await;
+
+    if let Ok(r) = res {
+        (
+            StatusCode::OK,
+            RestApi::new_successful(r.rows_affected()).builder(),
+        )
+    } else {
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            RestApi::new_error().builder(),
+        )
+    }
 }
 
 /// # 解除本场登记

@@ -1,0 +1,18 @@
+server:
+  url: localhost:20020
+  path: 0.0.0.0
+  port: 20020
+database:
+  host: 1.orgvoid.top
+  port: 37700
+  name: orange_international
+  username: orange_international
+  password: pz6ePDTD5YjENbtS
+redis:
+  url: redis://localhost/
+  url1: redis://:jhkdjhkjdhsIUTYURTU_sCDs5d@localhost/
+coc_api:
+  url: https://api.clashofclans.com/v1
+  token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjM4NGNlOTY5LWI4NmMtNDAwOS1iY2JiLTY2YjE3MTM2NjQ5OCIsImlhdCI6MTczOTgwNTg5Niwic3ViIjoiZGV2ZWxvcGVyL2ViNmU1NmVjLTZkYTYtZjBjZS1hNTExLWIwYjA3MGU0MWMwMiIsInNjb3BlcyI6WyJjbGFzaCJdLCJsaW1pdHMiOlt7InRpZXIiOiJkZXZlbG9wZXIvc2lsdmVyIiwidHlwZSI6InRocm90dGxpbmcifSx7ImNpZHJzIjpbIjM4LjU1LjE5OC4yNyJdLCJ0eXBlIjoiY2xpZW50In1dfQ.XiKrJGcLIzpWK4sFy8-yQcEFe_oQXmyO5hSQFeiVkVHcGunM9hycCagI8AIkwikFw8a48d-_1TaEgY10ppUXAg
+middle_api:
+  url: http://cocbzlm.com:8422/api/wardecider
