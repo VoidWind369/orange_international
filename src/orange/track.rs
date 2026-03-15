@@ -156,7 +156,7 @@ impl Track {
         // 本场轮次
         let round = Round::select_last(pool).await.unwrap_or_default();
 
-        if round.get_create_time() > (Utc::now() + Duration::minutes(10)) {
+        if (round.get_create_time() + Duration::minutes(10)) > Utc::now() {
             return None;
         }
 
