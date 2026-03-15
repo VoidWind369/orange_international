@@ -523,14 +523,25 @@ async fn new_track(
     }
 
     // 添加Track获取输赢（本盟/中间库）
-    let track = Track::new(
+    let track = if let Some(t) = Track::new(
         &app_state.pool,
         first_point,
         last_point,
         &self_clan,
         is_global,
     )
-    .await;
+    .await
+    {
+        t
+    } else {
+        return (
+            StatusCode::GONE,
+            RestApi::failed(
+                "Please register 10 minutes after the battle starts",
+                "请在开战后10分钟登记",
+            ),
+        );
+    };
 
     // 添加track记录（数据库Unique限制重复）
     let track_res = if let Ok(qr) = track.insert(&app_state.pool).await {

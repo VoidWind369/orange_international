@@ -1,7 +1,7 @@
 use crate::api::MiddleTrackApi;
 use crate::orange::clan_point::ClanPoint;
 use crate::orange::{Clan, Round};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
@@ -152,8 +152,12 @@ impl Track {
         rival_clan_point: Option<ClanPoint>,
         self_tag: &Clan,
         is_global: bool,
-    ) -> Self {
+    ) -> Option<Self> {
         let round = Round::select_last(pool).await.unwrap_or_default();
+
+        if round.get_create_time() < (Utc::now() + Duration::minutes(10)) {
+            return None;
+        }
 
         // 初始化积分
         let scp = self_clan_point.unwrap_or_default();
@@ -176,7 +180,7 @@ impl Track {
         // ****************Track Failed 调用中间库****************
         if track.self_clan_id == Uuid::default() || track.rival_clan_id == Uuid::default() {
             let ma = MiddleTrackApi::new(self_tag, is_global).await.unwrap();
-            return ma.check_win(pool, track, is_global, self_tag).await;
+            return Some(ma.check_win(pool, track, is_global, self_tag).await);
         }
         // ****************Track Failed 调用中间库****************
 
@@ -187,13 +191,13 @@ impl Track {
             reward_info.set_now(1, 0);
             track.set_reward_info(reward_info);
             track.reward(scp, pool, true, TrackResult::Win).await;
-            return track;
+            return Some(track);
         }
         if scp.reward_point < 0 {
             reward_info.set_now(-1, 0);
             track.set_reward_info(reward_info);
             track.reward(scp, pool, false, TrackResult::Lose).await;
-            return track;
+            return Some(track);
         }
 
         // 对手奖惩
@@ -202,14 +206,14 @@ impl Track {
             reward_info.set_now(0, 1);
             track.set_reward_info(reward_info);
             track.reward(rcp, pool, true, TrackResult::Lose).await;
-            return track;
+            return Some(track);
         }
         if rcp.reward_point < 0 {
             // 先登记用奖惩
             reward_info.set_now(0, -1);
             track.set_reward_info(reward_info);
             track.reward(rcp, pool, false, TrackResult::Win).await;
-            return track;
+            return Some(track);
         }
         // ***********************奖惩阶段***********************
 
@@ -237,7 +241,7 @@ impl Track {
                 .await;
         }
         // ***********************积分阶段***********************
-        track
+        Some(track)
     }
 
     /// # History Win Check

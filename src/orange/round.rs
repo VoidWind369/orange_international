@@ -1,7 +1,7 @@
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
+use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
@@ -16,9 +16,13 @@ impl Round {
     pub fn get_id(&self) -> Uuid {
         self.id
     }
-    
+
     pub fn get_code(&self) -> &str {
         &self.code
+    }
+
+    pub fn get_create_time(&self) -> DateTime<Utc> {
+        self.create_time
     }
 
     pub async fn check_not_now(&self) -> bool {
@@ -26,7 +30,9 @@ impl Round {
     }
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
-        query_as("select * from orange.round order by create_time desc").fetch_all(pool).await
+        query_as("select * from orange.round order by create_time desc")
+            .fetch_all(pool)
+            .await
     }
 
     pub async fn select_last(pool: &Pool<Postgres>) -> Result<Self, Error> {
