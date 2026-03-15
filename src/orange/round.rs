@@ -41,6 +41,19 @@ impl Round {
             .await
     }
 
+    pub async fn select_last2(pool: &Pool<Postgres>) -> Self {
+        let last2 =
+            query_as::<_, Self>("select * from orange.round order by create_time desc limit 2")
+                .fetch_all(pool)
+                .await
+                .unwrap();
+        if let Some(l) = last2.last() {
+            l.clone()
+        } else {
+            Round::default()
+        }
+    }
+
     pub async fn insert(time_str: &str, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let ndt = if let Ok(naive_date_time) =
             NaiveDateTime::parse_from_str(time_str, "%Y-%m-%dT%H:%M:%S")

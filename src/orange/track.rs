@@ -153,9 +153,10 @@ impl Track {
         self_tag: &Clan,
         is_global: bool,
     ) -> Option<Self> {
+        // 本场轮次
         let round = Round::select_last(pool).await.unwrap_or_default();
 
-        if round.get_create_time() < (Utc::now() + Duration::minutes(10)) {
+        if round.get_create_time() > (Utc::now() + Duration::minutes(10)) {
             return None;
         }
 

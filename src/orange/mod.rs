@@ -432,14 +432,8 @@ async fn new_track(
     };
     log_info!("登记0: 本家标签 {} | 对家标签 {}", &self_tag, &rival_tag);
 
-    // 判断先后手
-    // let (first_tag, last_tag) = if last {
-    //     (rival_tag, self_tag.clone())
-    // } else {
-    //     (self_tag.clone(), rival_tag)
-    // };
-
-    // log_info!("登记1: 先手标签 {first_tag} | 后手标签 {last_tag}");
+    // 上场轮次（用于查询两把重复）
+    let round2 = Round::select_last2(&app_state.pool).await;
 
     // 查询本家加盟状态
     let self_clan = if let Ok(clan) = Clan::select_tag(&app_state.pool, &self_tag, is_global).await
