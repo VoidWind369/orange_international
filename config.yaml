@@ -7,7 +7,7 @@ database:
   port: 37700
   name: orange_international
   username: orange_international
-  password: pz6ePDTD5YjENbtS
+  password: 7rpE7EYnZWFRSTzm
 redis:
   url: redis://localhost/
   url1: redis://:jhkdjhkjdhsIUTYURTU_sCDs5d@localhost/
