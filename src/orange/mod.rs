@@ -531,8 +531,8 @@ async fn new_track(
         return (
             StatusCode::GONE,
             RestApi::failed(
-                "Please register 10 minutes after the battle starts",
-                "请在开战后10分钟登记",
+                "Please try again later or after 10 minutes",
+                "请稍后再试，或10分钟后",
             ),
         );
     };

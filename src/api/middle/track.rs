@@ -50,7 +50,7 @@ impl Display for MiddleTrackApi {
 }
 
 impl MiddleTrackApi {
-    pub async fn new(clan: &Clan, is_global: bool) -> reqwest::Result<Self> {
+    pub async fn new(clan: &Clan, is_global: bool) -> Result<Self, ()> {
         let body = json!({
             "myTag": clan.tag,
             "isGlobal": is_global,
@@ -60,8 +60,13 @@ impl MiddleTrackApi {
             .header("isAdmin", "true")
             .json(&body)
             .send()
-            .await;
-        response?.json().await
+            .await
+            .unwrap();
+        if response.status().is_success() {
+            Ok(response.json().await.unwrap())
+        } else {
+            Err(())
+        }
     }
 
     pub async fn check_win(
