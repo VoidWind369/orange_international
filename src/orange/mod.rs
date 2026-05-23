@@ -613,11 +613,10 @@ async fn delete_track(
     AuthBearer(token): AuthBearer,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
-    log_info!("Delete Track {}", &token);
     // ********************鉴权********************
     if let Err(e) = UserInfo::get_user(&token).await {
         log_warn!("UNAUTHORIZED {e}");
-        return (StatusCode::UNAUTHORIZED, Json::default());
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
     // ********************鉴权********************
     log_info!("解除登记：鉴权通过");
@@ -626,10 +625,13 @@ async fn delete_track(
 
     if let Ok(r) = res {
         log_info!("解除登记成功");
-        (StatusCode::OK, Json(r.rows_affected()))
+        (StatusCode::OK, RestApi::successful(r.rows_affected()))
     } else {
         log_info!("解除登记失败");
-        (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            RestApi::failed("Deregistration failed", "解除登记失败"),
+        )
     }
 }
 
