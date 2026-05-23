@@ -41,7 +41,7 @@ pub fn router() -> Router<AppState> {
         .route("/round", get(rounds).post(round_insert))
         .route("/last_round", get(last_round))
         // 对战记录相关
-        .route("/track", get(tracks).post(new_track).delete(delete_track))
+        .route("/track", get(tracks).post(new_track))
         .route(
             "/track/{id}",
             get(track_round).post(reverse_track).delete(delete_track),
@@ -613,16 +613,22 @@ async fn delete_track(
     AuthBearer(token): AuthBearer,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
+    log_info!("Delete Track {}", &token);
     // ********************鉴权********************
     if let Err(e) = UserInfo::get_user(&token).await {
         log_warn!("UNAUTHORIZED {e}");
         return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
+    log_info!("解除登记：鉴权通过");
 
-    if let Ok(r) = Track::delete(&app_state.pool, id).await {
+    let res = Track::delete(&app_state.pool, id).await;
+
+    if let Ok(r) = res {
+        log_info!("解除登记成功");
         (StatusCode::OK, Json(r.rows_affected()))
     } else {
+        log_info!("解除登记失败");
         (StatusCode::UNPROCESSABLE_ENTITY, Json::default())
     }
 }

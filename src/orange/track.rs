@@ -361,7 +361,10 @@ impl Track {
     }
 
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
-        query_as(sql("and id = $1")).bind(id).fetch_one(pool).await
+        query_as(sql("and ot.id = $1"))
+            .bind(id)
+            .fetch_one(pool)
+            .await
     }
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
@@ -384,9 +387,16 @@ impl Track {
 
     /// # 解除本场登记
     pub async fn delete(pool: &Pool<Postgres>, id: Uuid) -> Result<PgQueryResult, Error> {
+        log_info!("解除开始");
         let round = Round::select_last(pool).await.unwrap_or_default();
         let track = Self::select(pool, id).await?;
-        if track.round_id == round.get_id() {
+        log_info!(
+            "{} {}",
+            round.get_id().to_string(),
+            track.round_id.to_string()
+        );
+        if track.round_id.eq(&round.get_id()) {
+            log_info!("取消1: 是本场记录 {}", track.round_id == round.get_id());
             let self_repair =
                 ClanPoint::repair_point(pool, track.self_clan_id, track.self_history_point)
                     .await
