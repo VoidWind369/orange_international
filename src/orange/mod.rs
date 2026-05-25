@@ -462,44 +462,78 @@ async fn new_track(
     };
 
     // 先手积分数据
-    let (first_point, has_first_tracks) = if first_clan.status.is_some_and(|t| t == 1) {
-        log_info!("登记1: 先手加盟状态 {}", &first_clan);
-        let mut point = first_clan
-            .point_select(&app_state.pool)
-            .await
-            .unwrap_or_default();
-        log_info!("登记2: 先手积分状态 {}", &point);
-        point.clan_id = first_clan.id.unwrap_or_default();
+    let (first_point, has_first_tracks, check_first_repeat) =
+        if first_clan.status.is_some_and(|t| t == 1) {
+            log_info!("登记1: 先手加盟状态 {}", &first_clan);
+            let mut point = first_clan
+                .point_select(&app_state.pool)
+                .await
+                .unwrap_or_default();
+            log_info!("登记2: 先手积分状态 {}", &point);
+            point.clan_id = first_clan.id.unwrap_or_default();
 
-        let cst = Track::select_round(&app_state.pool, point.clan_id)
-            .await
-            .unwrap();
+            let check_first_track = round
+                .select_clan(&app_state.pool, point.clan_id)
+                .await
+                .unwrap();
+            let check_first_track2 = round2
+                .select_clan(&app_state.pool, point.clan_id)
+                .await
+                .unwrap();
 
-        (Some(point), !cst.is_empty())
-    } else {
-        log_warn!("登记1: 先手部落异常");
-        (None, false)
-    };
+            // 检查与上场对手相同
+            let check_repeat = if !check_first_track.is_empty() && !check_first_track2.is_empty() {
+                let ss = check_first_track[0].self_clan_id == check_first_track2[0].self_clan_id;
+                let sr = check_first_track[0].self_clan_id == check_first_track2[0].rival_clan_id;
+                let rs = check_first_track[0].rival_clan_id == check_first_track2[0].self_clan_id;
+                let rr = check_first_track[0].rival_clan_id == check_first_track2[0].rival_clan_id;
+                (ss && rr) || (sr && rs)
+            } else {
+                false
+            };
+
+            (Some(point), !check_first_track.is_empty(), check_repeat)
+        } else {
+            log_warn!("登记1: 先手部落异常");
+            (None, false, false)
+        };
 
     // 后手积分数据
-    let (last_point, has_last_tracks) = if last_clan.status.is_some_and(|x| x == 1) {
-        log_info!("登记1: 后手加盟状态 {}", &last_clan);
-        let mut point = last_clan
-            .point_select(&app_state.pool)
-            .await
-            .unwrap_or_default();
-        log_info!("登记2: 后手积分状态 {}", &point);
-        point.clan_id = last_clan.id.unwrap_or_default();
+    let (last_point, has_last_tracks, check_last_repeat) =
+        if last_clan.status.is_some_and(|x| x == 1) {
+            log_info!("登记1: 后手加盟状态 {}", &last_clan);
+            let mut point = last_clan
+                .point_select(&app_state.pool)
+                .await
+                .unwrap_or_default();
+            log_info!("登记2: 后手积分状态 {}", &point);
+            point.clan_id = last_clan.id.unwrap_or_default();
 
-        let crt = Track::select_round(&app_state.pool, point.clan_id)
-            .await
-            .unwrap();
+            let check_last_track = round
+                .select_clan(&app_state.pool, point.clan_id)
+                .await
+                .unwrap();
+            let check_last_track2 = round2
+                .select_clan(&app_state.pool, point.clan_id)
+                .await
+                .unwrap();
 
-        (Some(point), !crt.is_empty())
-    } else {
-        log_warn!("登记1: 后手部落异常");
-        (None, false)
-    };
+            // 检查与上场对手相同
+            let check_repeat = if !check_last_track.is_empty() && !check_last_track2.is_empty() {
+                let ss = check_last_track[0].self_clan_id == check_last_track2[0].self_clan_id;
+                let sr = check_last_track[0].self_clan_id == check_last_track2[0].rival_clan_id;
+                let rs = check_last_track[0].rival_clan_id == check_last_track2[0].self_clan_id;
+                let rr = check_last_track[0].rival_clan_id == check_last_track2[0].rival_clan_id;
+                (ss && rr) || (sr && rs)
+            } else {
+                false
+            };
+
+            (Some(point), !check_last_track.is_empty(), check_repeat)
+        } else {
+            log_warn!("登记1: 后手部落异常");
+            (None, false, false)
+        };
 
     // 本轮已登记直接返回
     if let Ok(track) = Track::select_registered(&app_state.pool, &first_point, &round).await {
@@ -508,11 +542,23 @@ async fn new_track(
     };
 
     // 预查限制重复登记
+    if check_first_repeat || check_last_repeat {
+        log_warn!("预查上场对手重复");
+        return (
+            StatusCode::CONFLICT,
+            RestApi::failed(
+                "Opponent repeated, please try again later",
+                "对手与上场重复，请稍后再试",
+            ),
+        );
+    }
+
+    // 预查限制重复登记
     if has_first_tracks || has_last_tracks {
         log_warn!("预查重复登记");
         return (
             StatusCode::CONFLICT,
-            RestApi::failed("Repeat Track", "重复登记"),
+            RestApi::failed("The opponent has been registered", "对手已被登记"),
         );
     }
 

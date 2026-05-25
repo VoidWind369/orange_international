@@ -103,12 +103,6 @@ impl Display for TrackRewardInfo {
     }
 }
 
-impl Track {
-    fn set_reward_info(&mut self, reward_info: TrackRewardInfo) {
-        self.reward_info = Some(Json(reward_info));
-    }
-}
-
 impl TrackRewardInfo {
     fn new_history(self_history: i64, rival_history: i64) -> Self {
         Self {
@@ -146,6 +140,10 @@ fn sql(sql_text: &str) -> &'static str {
 }
 
 impl Track {
+    fn set_reward_info(&mut self, reward_info: TrackRewardInfo) {
+        self.reward_info = Some(Json(reward_info));
+    }
+
     pub async fn new(
         pool: &Pool<Postgres>,
         self_clan_point: Option<ClanPoint>,
@@ -345,11 +343,6 @@ impl Track {
         .await
     }
 
-    pub async fn select_round(pool: &Pool<Postgres>, clan_id: Uuid) -> Result<Vec<Self>, Error> {
-        let round = Round::select_last(pool).await.unwrap_or_default();
-        Self::select_clan_round(pool, clan_id, round.get_id()).await
-    }
-
     ///
     pub async fn select_clan_round(
         pool: &Pool<Postgres>,
@@ -415,6 +408,17 @@ impl Track {
         } else {
             Err(Error::RowNotFound)
         }
+    }
+}
+
+impl Round {
+    pub async fn select_clan(
+        &self,
+        pool: &Pool<Postgres>,
+        clan_id: Uuid,
+    ) -> Result<Vec<Track>, Error> {
+        query_as(sql("and (ot.self_clan_id = $1 or ot.rival_clan_id = $1) and ot.round_id = $2 order by ot.create_time desc limit 1"))
+            .bind(clan_id).bind(self.get_id()).fetch_all(pool).await
     }
 }
 
