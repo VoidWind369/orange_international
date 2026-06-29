@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
+use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as, query_scalar};
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::log_info;
@@ -71,10 +71,30 @@ impl Clan {
     pub fn get_id(&self) -> Uuid {
         self.id.unwrap_or_default()
     }
+
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as("select * from orange.clan where status >= 1 and status <= 3")
             .fetch_all(pool)
             .await
+    }
+
+    pub async fn select_page(
+        pool: &Pool<Postgres>,
+        page: i64,
+        page_size: i64,
+    ) -> Result<Vec<Self>, Error> {
+        query_as("select * from orange.clan where status > 0 order by id limit $1 offset $2")
+            .bind(page_size)
+            .bind(page_size * (page - 1))
+            .fetch_all(pool)
+            .await
+    }
+
+    pub async fn count(pool: &Pool<Postgres>) -> i64 {
+        query_scalar("select count(id) from orange.clan")
+            .fetch_one(pool)
+            .await
+            .unwrap_or_default()
     }
 
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {

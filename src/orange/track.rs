@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
 use sqlx::types::Json;
-use sqlx::{Error, FromRow, Pool, Postgres, SqlStr, Type, query, query_as};
+use sqlx::{Error, FromRow, Pool, Postgres, SqlStr, Type, query, query_as, query_scalar};
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::{log_info, log_warn};
@@ -306,6 +306,29 @@ impl Track {
         query_as(sql("order by create_time desc"))
             .fetch_all(pool)
             .await
+    }
+
+    /// # 分页查询API
+    pub async fn select_page(
+        pool: &Pool<Postgres>,
+        page: i64,
+        page_size: i64,
+    ) -> Result<Vec<Self>, Error> {
+        query_as(sql(
+            "order by create_time order by id desc limit $1 offset $2",
+        ))
+        .bind(page_size)
+        .bind(page_size * (page - 1))
+        .fetch_all(pool)
+        .await
+    }
+
+    /// # 分页数据总数
+    pub async fn count(pool: &Pool<Postgres>) -> i64 {
+        query_scalar("select count(id) from orange.track")
+            .fetch_one(pool)
+            .await
+            .unwrap_or_default()
     }
 
     /// # 查询是否已登记

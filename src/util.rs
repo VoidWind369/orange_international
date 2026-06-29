@@ -145,6 +145,7 @@ pub struct RestApi<D> {
     msg_en: String,
     msg_cn: String,
     data: Option<D>,
+    data_count: i64,
 }
 
 impl<D> RestApi<D> {
@@ -153,6 +154,7 @@ impl<D> RestApi<D> {
             msg_en: msg_en.to_string(),
             msg_cn: msg_cn.to_string(),
             data,
+            data_count: 0,
         }
     }
 
@@ -199,5 +201,11 @@ impl<D> RestApi<D> {
     /// # 鉴权失败
     pub fn unauthorized() -> Json<Self> {
         Self::new_unauthorized().builder()
+    }
+
+    /// # 适用于分页计数
+    pub fn data_count(mut self, count: i64) -> Self {
+        self.data_count = count;
+        self
     }
 }

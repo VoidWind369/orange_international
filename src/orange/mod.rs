@@ -29,6 +29,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         // 部落相关
         .route("/clan", get(clans).post(clan_insert).put(clan_update))
+        .route("/clan_{page}/{page_size}", get(clans_page))
         .route("/clan_search", post(clan_search))
         .route("/clan/{id}", get(clan).delete(clan_delete))
         .route("/clan/{tag}/{is_global}", get(clan_tag))
@@ -41,6 +42,7 @@ pub fn router() -> Router<AppState> {
         .route("/last_round", get(last_round))
         // 对战记录相关
         .route("/track", get(tracks).post(new_track))
+        .route("/track_{page}/{page_size}", get(tracks_page))
         .route(
             "/track/{id}",
             get(track_round).post(reverse_track).delete(delete_track),
@@ -66,6 +68,27 @@ async fn clans(
 
     let res = Clan::select_all(&app_state.pool).await.unwrap();
     (StatusCode::OK, Json(res))
+}
+
+async fn clans_page(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path((page, page_size)): Path<(i64, i64)>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*clan*select") {
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
+    }
+    // ********************鉴权********************
+
+    let res = Clan::select_page(&app_state.pool, page, page_size)
+        .await
+        .unwrap();
+    let count = Clan::count(&app_state.pool).await;
+    (
+        StatusCode::OK,
+        RestApi::new_successful(res).data_count(count).builder(),
+    )
 }
 
 async fn clan(
@@ -321,6 +344,29 @@ async fn tracks(
 
     let res = Track::select_all(&app_state.pool).await.unwrap();
     (StatusCode::OK, Json(res))
+}
+
+async fn tracks_page(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path((page, page_size)): Path<(i64, i64)>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
+    }
+    // ********************鉴权********************
+
+    let res = Track::select_page(&app_state.pool, page, page_size)
+        .await
+        .unwrap();
+
+    let count = Track::count(&app_state.pool).await;
+    (
+        StatusCode::OK,
+        RestApi::new_successful(res).data_count(count).builder(),
+    )
 }
 
 async fn track_round(
