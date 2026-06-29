@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
 use crate::util::Config;
-use reqwest::header::AUTHORIZATION;
 use reqwest::Client;
+use reqwest::header::AUTHORIZATION;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::BTreeMap;
 use void_log::{log_info, log_warn};
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -142,8 +142,11 @@ impl Clan {
         log_info!("查询标签 #{}", &tag);
         let url = format!("https://api.clashofclans.com/v1/clans/%23{tag}");
         log_info!("API {}", &url);
-        let response = Client::new().get(url)
-            .header(AUTHORIZATION, token).send().await;
+        let response = Client::new()
+            .get(url)
+            .header(AUTHORIZATION, token)
+            .send()
+            .await;
         match response {
             Ok(re) => {
                 let data = re.json().await.unwrap_or_default();
@@ -156,7 +159,7 @@ impl Clan {
             }
         }
     }
-    
+
     pub fn info(&self) -> BTreeMap<i64, i64> {
         let mut towns = BTreeMap::new();
         if let Some(members) = self.member_list.as_ref() {
@@ -167,4 +170,10 @@ impl Clan {
         };
         towns
     }
+}
+
+#[tokio::test]
+async fn test1() {
+    let c = Clan::get("#q82u2qr9").await;
+    log_info!("{c:?}")
 }

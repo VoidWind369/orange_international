@@ -7,7 +7,6 @@ mod track;
 
 use crate::api::War;
 use crate::core::registration;
-pub use crate::orange::clan_point::ClanPoint;
 use crate::orange::operate_log::{OperateLog, RewardType};
 use crate::system::{User, UserInfo};
 use crate::util::RestApi;
@@ -18,8 +17,8 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use axum_auth::AuthBearer;
-pub use clan::Clan;
-pub use clan::ClanUser;
+pub use clan::*;
+pub use clan_point::*;
 pub use round::Round;
 use serde_json::Value;
 pub use track::*;
@@ -103,7 +102,7 @@ async fn clan_tag(
     let tag = format!("#{tag}").to_uppercase();
 
     if let Ok(clan) = Clan::select_tag(&app_state.pool, &tag, is_global).await {
-        if clan.status.is_some_and(|x| x == 1) {
+        if clan.status.is_some_and(|x| x == ClanStatus::Ready) {
             (StatusCode::OK, Json(clan))
         } else {
             (StatusCode::GONE, Json::default())
@@ -463,7 +462,7 @@ async fn new_track(
 
     // 先手积分数据
     let (first_point, has_first_tracks, check_first_repeat) =
-        if first_clan.status.is_some_and(|t| t == 1) {
+        if first_clan.status.is_some_and(|t| t.eq(&ClanStatus::Ready)) {
             log_info!("登记1: 先手加盟状态 {}", &first_clan);
             let mut point = first_clan
                 .point_select(&app_state.pool)
@@ -500,7 +499,7 @@ async fn new_track(
 
     // 后手积分数据
     let (last_point, has_last_tracks, check_last_repeat) =
-        if last_clan.status.is_some_and(|x| x == 1) {
+        if last_clan.status.is_some_and(|x| x == ClanStatus::Ready) {
             log_info!("登记1: 后手加盟状态 {}", &last_clan);
             let mut point = last_clan
                 .point_select(&app_state.pool)

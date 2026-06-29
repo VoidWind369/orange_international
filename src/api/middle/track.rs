@@ -1,4 +1,7 @@
-use crate::orange::{Clan, Track, TrackResult, TrackType};
+use crate::{
+    core::registration::ClanTag,
+    orange::{Clan, ClanStatus, Track, TrackResult, TrackType},
+};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -7,24 +10,26 @@ use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::log_info;
 
+pub const BZ_UUID: &str = "4fc2832d-cf1f-47e0-9b54-6c35937c73a4";
+
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MiddleTrackApi {
-    my_tag: String,
-    my_name: Option<String>,
-    opp_tag: String,
-    opp_name: Option<String>,
-    match_type: Option<String>,
-    win_tag: String,
-    win_name: Option<String>,
+    pub my_tag: String,
+    pub my_name: Option<String>,
+    pub opp_tag: String,
+    pub opp_name: Option<String>,
+    pub match_type: Option<String>,
+    pub win_tag: String,
+    pub win_name: Option<String>,
     #[serde(rename = "explain_ch")]
-    explain_ch: Option<String>,
+    pub explain_ch: Option<String>,
     #[serde(rename = "explain_en")]
-    explain_en: Option<String>,
-    email: Option<String>,
-    match_strategy: Option<String>,
-    round_score: i64,
-    err: bool,
+    pub explain_en: Option<String>,
+    pub email: Option<String>,
+    pub match_strategy: Option<String>,
+    pub round_score: i64,
+    pub err: bool,
 }
 
 impl Display for MiddleTrackApi {
@@ -46,6 +51,27 @@ impl Display for MiddleTrackApi {
             self.round_score,
             self.err,
         )
+    }
+}
+
+impl ClanTag {
+    pub async fn middle_api(&self) -> Result<MiddleTrackApi, ()> {
+        let body = json!({
+            "myTag": self.tag,
+            "isGlobal": self.is_global,
+        });
+        let response = Client::new()
+            .post("http://cocbzlm.com:8422/api/wardecider")
+            .header("isAdmin", "true")
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        if response.status().is_success() {
+            Ok(response.json().await.unwrap())
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -99,12 +125,9 @@ impl MiddleTrackApi {
         log_info!("rival_tag: {rival_tag} | win_tag: {win_tag} | is_global: {is_global}");
 
         let (status, series_id) = if self.err {
-            (3, None)
+            (ClanStatus::Other, None)
         } else {
-            (
-                9,
-                Some(Uuid::parse_str("4fc2832d-cf1f-47e0-9b54-6c35937c73a4").unwrap()),
-            )
+            (ClanStatus::Ally, Some(Uuid::parse_str(BZ_UUID).unwrap()))
         };
 
         let mut clan = Clan {

@@ -106,7 +106,7 @@ impl ConfigServer {
     pub fn get_path(&self) -> String {
         self.path.as_ref().unwrap_or(&"0.0.0.0".to_string()).clone()
     }
-    
+
     pub fn get_pem_path(&self) -> Option<ConfigServerTls> {
         self.pem_path.clone()
     }
@@ -160,7 +160,7 @@ impl<D> RestApi<D> {
         Self::new("Successful", "成功", Some(data))
     }
 
-    pub fn new_failed(msg_en: impl ToString, msg_cn: impl ToString) -> Self<> {
+    pub fn new_failed(msg_en: impl ToString, msg_cn: impl ToString) -> Self {
         Self::new(msg_en, msg_cn, None)
     }
 

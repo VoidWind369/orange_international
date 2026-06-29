@@ -145,4 +145,14 @@ impl Clan {
             .fetch_one(pool)
             .await
     }
+
+    pub async fn point_insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
+        query("insert into orange.clan_point values($1, $2, $3, $3, $4)")
+            .bind(self.id)
+            .bind(0)
+            .bind(Utc::now())
+            .bind(1)
+            .execute(pool)
+            .await
+    }
 }

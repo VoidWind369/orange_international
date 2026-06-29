@@ -12,6 +12,7 @@ use void_log::log_info;
 
 mod api;
 mod core;
+mod mail;
 mod middle;
 mod orange;
 mod safety;

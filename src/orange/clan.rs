@@ -3,8 +3,9 @@ use crate::orange::clan_point::ClanPoint;
 use crate::system::{User, UserInfo};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as};
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::log_info;
@@ -18,9 +19,25 @@ pub struct Clan {
     pub create_time: DateTime<Utc>,
     #[serde(skip_deserializing)]
     pub update_time: DateTime<Utc>,
-    pub status: Option<i16>,
+    pub status: Option<ClanStatus>,
     pub series_id: Option<Uuid>,
     pub is_global: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Type, Serialize_repr, Deserialize_repr, Copy)]
+#[repr(i16)]
+pub enum ClanStatus {
+    /// # 正常
+    Ready = 1,
+    /// # 锁定
+    Locked = 2,
+    /// # 外部
+    #[default]
+    Other = 3,
+    /// # 黑名单
+    Blacklist = 4,
+    /// # 友盟
+    Ally = 9,
 }
 
 impl Display for Clan {
@@ -28,17 +45,32 @@ impl Display for Clan {
         write!(
             f,
             "{:?}\nTag: {:?}\nName: {:?}\nCreateTime: {:?}\nStatus: {:?}\nIsGlobal: {:?}",
-            &self.id.unwrap_or_default(),
-            &self.tag,
-            &self.name,
-            &self.create_time,
-            &self.status,
-            &self.is_global,
+            self.id.unwrap_or_default(),
+            self.tag,
+            self.name,
+            self.create_time,
+            self.status,
+            self.is_global,
         )
     }
 }
 
+impl Display for ClanStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ClanStatus::Ready => write!(f, "{}", "Ready"),
+            ClanStatus::Locked => write!(f, "{}", "Locked"),
+            ClanStatus::Other => write!(f, "{}", "Other"),
+            ClanStatus::Blacklist => write!(f, "{}", "Blacklist"),
+            ClanStatus::Ally => write!(f, "{}", "Ally"),
+        }
+    }
+}
+
 impl Clan {
+    pub fn get_id(&self) -> Uuid {
+        self.id.unwrap_or_default()
+    }
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as("select * from orange.clan where status >= 1 and status <= 3")
             .fetch_all(pool)
@@ -214,7 +246,7 @@ impl api::Clan {
         Clan {
             tag: (&self).tag.clone(),
             name: (&self).name.clone(),
-            status: Some(1),
+            status: Some(ClanStatus::Ready),
             ..Default::default()
         }
     }
