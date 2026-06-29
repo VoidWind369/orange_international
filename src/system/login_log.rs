@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{query, query_as, Error, FromRow, Pool, Postgres};
+use sqlx::{Error, FromRow, Pool, Postgres, query, query_as, query_scalar};
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 
@@ -41,6 +41,26 @@ impl LoginLog {
             .await
     }
 
+    pub async fn select_page(
+        pool: &Pool<Postgres>,
+        page: i64,
+        page_size: i64,
+    ) -> Result<Vec<Self>, Error> {
+        query_as("select ll.*, u.code, u.name from public.login_log ll, public.user u where ll.user_id = u.id and u.code not like '%admin%' order by login_time desc limit $1 offset $2")
+            .bind(page_size)
+            .bind(page_size * (page - 1))
+            .fetch_all(pool)
+            .await
+    }
+
+    /// # 分页数据总数
+    pub async fn count(pool: &Pool<Postgres>) -> i64 {
+        query_scalar("select count(id) from public.login_log")
+            .fetch_one(pool)
+            .await
+            .unwrap_or_default()
+    }
+
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Vec<Self>, Error> {
         query_as("select ll.*, u.code, u.name from public.login_log ll, public.user u where ll.user_id = u.id and u.code not like '%admin%' and ll.user_id = $1")
             .bind(id)
@@ -48,7 +68,10 @@ impl LoginLog {
             .await
     }
 
-    pub async fn select_code_or_name(pool: &Pool<Postgres>, text: String) -> Result<Vec<Self>, Error> {
+    pub async fn select_code_or_name(
+        pool: &Pool<Postgres>,
+        text: String,
+    ) -> Result<Vec<Self>, Error> {
         let text = format!("%{text}%");
         query_as("select ll.*, u.code, u.name from public.login_log ll, public.user u where ll.user_id = u.id and u.code not like '%admin%' and (u.code like $1 or u.name like $1)")
             .bind(text)

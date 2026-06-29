@@ -22,6 +22,19 @@ async fn login_log(State(app_state): State<AppState>) -> impl IntoResponse {
     RestApi::new("ok", "ok", Some(data)).builder_msgpack()
 }
 
+async fn login_log_page(
+    State(app_state): State<AppState>,
+    Path((page, page_size)): Path<(i64, i64)>,
+) -> impl IntoResponse {
+    let data = LoginLog::select_page(&app_state.pool, page, page_size)
+        .await
+        .unwrap_or_default();
+    let count = LoginLog::count(&app_state.pool).await;
+    RestApi::new("ok", "ok", Some(data))
+        .data_count(count)
+        .builder_msgpack()
+}
+
 async fn get_login_log(
     State(app_state): State<AppState>,
     Path(text): Path<String>,
@@ -37,5 +50,6 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/get_token", get(get_token))
         .route("/login_log", get(login_log))
+        .route("/login_log_{page}/{page_size}", get(login_log_page))
         .route("/login_log/{text}", get(get_login_log))
 }
