@@ -314,13 +314,11 @@ impl Track {
         page: i64,
         page_size: i64,
     ) -> Result<Vec<Self>, Error> {
-        query_as(sql(
-            "order by create_time order by id desc limit $1 offset $2",
-        ))
-        .bind(page_size)
-        .bind(page_size * (page - 1))
-        .fetch_all(pool)
-        .await
+        query_as(sql("order by create_time desc limit $1 offset $2"))
+            .bind(page_size)
+            .bind(page_size * (page - 1))
+            .fetch_all(pool)
+            .await
     }
 
     /// # 分页数据总数
