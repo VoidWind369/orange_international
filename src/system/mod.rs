@@ -1,4 +1,4 @@
-use crate::AppState;
+use crate::{AppState, util::RestApi};
 use argon2::{Argon2, password_hash::PasswordHasher};
 use axum::{
     Json, Router,
@@ -29,6 +29,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/login", head(check_online).post(login).delete(logout))
         .route("/user", get(users).post(user_insert).put(user_update))
+        .route("/user_{page}/{page_size}", get(users_page))
         .route("/user_search", post(user_search))
         .route("/user/{id}", get(user).delete(user_delete))
         .route("/get_password/{password}", get(password))
@@ -104,6 +105,27 @@ async fn users(
 
     let res = User::select_all(&app_state.pool).await.unwrap();
     (StatusCode::OK, Json(res))
+}
+
+async fn users_page(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path((page, page_size)): Path<(i64, i64)>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*clan*select") {
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
+    }
+    // ********************鉴权********************
+
+    let res = User::select_page(&app_state.pool, page, page_size)
+        .await
+        .unwrap();
+    let count = User::count(&app_state.pool).await;
+    (
+        StatusCode::OK,
+        RestApi::new_successful(res).data_count(count).builder(),
+    )
 }
 
 async fn user(
