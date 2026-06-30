@@ -113,8 +113,9 @@ async fn users_page(
     Path((page, page_size)): Path<(i64, i64)>,
 ) -> impl IntoResponse {
     // ********************鉴权********************
-    if !token.eq("cfa*clan*select") {
-        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, Json::default());
     }
     // ********************鉴权********************
 
