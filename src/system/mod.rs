@@ -115,7 +115,7 @@ async fn users_page(
     // ********************鉴权********************
     if let Err(e) = UserInfo::get_user(&token).await {
         log_warn!("UNAUTHORIZED {e}");
-        return (StatusCode::UNAUTHORIZED, Json::default());
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
     }
     // ********************鉴权********************
 
