@@ -1,14 +1,16 @@
-use crate::orange::{Clan, ClanUser};
-use crate::system::UserInfo;
-use crate::system::role::Role;
+use crate::{
+    orange::{Clan, ClanUser},
+    system::{UserInfo, role::Role},
+};
 use argon2::{
     Argon2,
-    password_hash::{phc::PasswordHash, PasswordHasher, PasswordVerifier},
+    password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash},
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use sqlx::{
+    Error, FromRow, Pool, Postgres, postgres::PgQueryResult, query, query_as, query_scalar,
+};
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::{log_error, log_info, log_warn};
@@ -58,6 +60,25 @@ impl User {
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as("select * from public.user").fetch_all(pool).await
+    }
+
+    pub async fn select_page(
+        pool: &Pool<Postgres>,
+        page: i64,
+        page_size: i64,
+    ) -> Result<Vec<Self>, Error> {
+        query_as("select * from public.user order by id limit $1 offset $2")
+            .bind(page_size)
+            .bind(page_size * (page - 1))
+            .fetch_all(pool)
+            .await
+    }
+
+    pub async fn count(pool: &Pool<Postgres>) -> i64 {
+        query_scalar("select count(id) from public.user")
+            .fetch_one(pool)
+            .await
+            .unwrap_or_default()
     }
 
     pub async fn select_search(pool: &Pool<Postgres>, text: &str) -> Result<Vec<Self>, Error> {

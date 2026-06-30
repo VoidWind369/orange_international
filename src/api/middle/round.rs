@@ -35,7 +35,9 @@ impl MiddleRoundApi {
     }
 
     pub async fn _get_text() -> Value {
-        let url = Url::parse("http://www.cocbzlm.com:8422/api/wardecider/syncTimeGlobal_alliance/cfa").unwrap();
+        let url =
+            Url::parse("http://www.cocbzlm.com:8422/api/wardecider/syncTimeGlobal_alliance/cfa")
+                .unwrap();
         log_info!("{}", &url);
 
         let response = Client::new()

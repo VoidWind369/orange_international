@@ -1,6 +1,5 @@
 use crate::util::Config;
-use reqwest::Client;
-use reqwest::header::AUTHORIZATION;
+use reqwest::{Client, header::AUTHORIZATION};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;

@@ -1,13 +1,12 @@
 use crate::util::Config;
-use axum::Router;
-use axum::routing::get;
+use axum::{Router, routing::get};
 use axum_server::tls_rustls::RustlsConfig;
 use sqlx::{Pool, Postgres};
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::str::FromStr;
-use tower_http::cors::CorsLayer;
-use tower_http::services::{ServeDir, ServeFile};
+use std::{net::SocketAddr, path::PathBuf, str::FromStr};
+use tower_http::{
+    cors::CorsLayer,
+    services::{ServeDir, ServeFile},
+};
 use void_log::log_info;
 
 mod api;

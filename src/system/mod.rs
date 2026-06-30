@@ -1,13 +1,12 @@
 use crate::AppState;
-use argon2::{
-    password_hash::PasswordHasher,
-    Argon2,
+use argon2::{Argon2, password_hash::PasswordHasher};
+use axum::{
+    Json, Router,
+    extract::{ConnectInfo, Path, State},
+    http::{HeaderMap, StatusCode},
+    response::IntoResponse,
+    routing::{get, head, post},
 };
-use axum::extract::{ConnectInfo, Path, State};
-use axum::http::{HeaderMap, StatusCode};
-use axum::response::IntoResponse;
-use axum::routing::{get, head, post};
-use axum::{Json, Router};
 use axum_auth::AuthBearer;
 use axum_msgpack::MsgPackRaw;
 use chrono::Utc;

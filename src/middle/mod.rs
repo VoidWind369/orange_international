@@ -2,15 +2,19 @@ mod read_compo;
 /// # 中间库Api
 mod track;
 
-use crate::AppState;
-use crate::api::{MiddleReadCompo, MiddleRoundApi, MiddleViewApi};
-use crate::system::UserInfo;
-use crate::util::RestApi;
-use axum::extract::{Path, State};
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::routing::get;
-use axum::{Json, Router};
+use crate::{
+    AppState,
+    api::{MiddleReadCompo, MiddleRoundApi, MiddleViewApi},
+    system::UserInfo,
+    util::RestApi,
+};
+use axum::{
+    Json, Router,
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    routing::get,
+};
 use axum_auth::AuthBearer;
 use chrono::Utc;
 pub use track::*;

@@ -1,8 +1,9 @@
 use crate::orange::clan_point::ClanPoint;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, query, query_as, query_scalar};
+use sqlx::{
+    Error, FromRow, Pool, Postgres, postgres::PgQueryResult, query, query_as, query_scalar,
+};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]

@@ -2,10 +2,7 @@ use chrono::Local;
 use lettre::{
     Message, SmtpTransport, Transport,
     message::header::ContentType,
-    transport::smtp::{
-        authentication::{Credentials, Mechanism},
-        client::{Certificate, Tls, TlsParameters},
-    },
+    transport::smtp::authentication::{Credentials, Mechanism},
 };
 
 fn send() {

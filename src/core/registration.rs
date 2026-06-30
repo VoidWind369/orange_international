@@ -1,4 +1,3 @@
-use axum::http::status;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres, postgres::PgQueryResult};
 use uuid::Uuid;

@@ -1,11 +1,14 @@
-use crate::api;
-use crate::orange::clan_point::ClanPoint;
-use crate::system::{User, UserInfo};
+use crate::{
+    api,
+    orange::clan_point::ClanPoint,
+    system::{User, UserInfo},
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, Type, query, query_as, query_scalar};
+use sqlx::{
+    Error, FromRow, Pool, Postgres, Type, postgres::PgQueryResult, query, query_as, query_scalar,
+};
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::log_info;

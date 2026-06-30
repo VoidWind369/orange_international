@@ -1,12 +1,14 @@
-use crate::api::MiddleTrackApi;
-use crate::orange::clan_point::ClanPoint;
-use crate::orange::{Clan, Round};
+use crate::{
+    api::MiddleTrackApi,
+    orange::{Clan, Round, clan_point::ClanPoint},
+};
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use sqlx::postgres::PgQueryResult;
-use sqlx::types::Json;
-use sqlx::{Error, FromRow, Pool, Postgres, SqlStr, Type, query, query_as, query_scalar};
+use sqlx::{
+    Error, FromRow, Pool, Postgres, SqlStr, Type, postgres::PgQueryResult, query, query_as,
+    query_scalar, types::Json,
+};
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 use void_log::{log_info, log_warn};

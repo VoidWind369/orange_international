@@ -1,7 +1,8 @@
-use crate::orange::Clan;
-use crate::system::role::Role;
-use crate::system::User;
-use crate::util::Config;
+use crate::{
+    orange::Clan,
+    system::{User, role::Role},
+    util::Config,
+};
 use redis::{Commands, RedisResult, Value};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

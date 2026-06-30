@@ -1,8 +1,6 @@
 use crate::api::{MiddleViewApi, MiddleViewApiDetails};
 use chrono::{DateTime, Utc};
-use sqlx::postgres::PgQueryResult;
-use sqlx::types::Json;
-use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use sqlx::{Error, FromRow, Pool, Postgres, postgres::PgQueryResult, query, query_as, types::Json};
 use uuid::Uuid;
 use void_log::log_info;
 

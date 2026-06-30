@@ -1,11 +1,11 @@
+use crate::api::war::WarClan;
+use crate::util::Config;
 use axum::http::header::AUTHORIZATION;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use reqwest::Client;
-use crate::api::war::WarClan;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use void_log::{log_info, log_warn};
-use crate::util::Config;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,14 +35,12 @@ struct WarLogItem {
 #[serde(rename_all = "camelCase")]
 struct WarLogPaging {
     cursors: WarLogPagingCursors,
-    
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct WarLogPagingCursors {
     after: String,
-
 }
 
 impl WarLog {
@@ -59,9 +57,7 @@ impl WarLog {
             .send()
             .await;
         match response {
-            Ok(re) => {
-                re.json::<Self>().await.unwrap()
-            }
+            Ok(re) => re.json::<Self>().await.unwrap(),
             Err(e) => {
                 log_warn!("WarLog {e}");
                 Default::default()

@@ -1,5 +1,4 @@
-use crate::api::clan::ClanIconUrls;
-use crate::util::Config;
+use crate::{api::clan::ClanIconUrls, util::Config};
 use axum::http::header::AUTHORIZATION;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -63,9 +62,7 @@ impl War {
             .send()
             .await;
         match response {
-            Ok(re) => {
-                re.json::<Self>().await.unwrap_or_default()
-            }
+            Ok(re) => re.json::<Self>().await.unwrap_or_default(),
             Err(e) => {
                 log_warn!("War {e}");
                 Default::default()

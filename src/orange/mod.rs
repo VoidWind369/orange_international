@@ -5,18 +5,23 @@ mod round;
 mod series;
 mod track;
 
-use crate::api::War;
-use crate::core::registration;
-use crate::orange::operate_log::{OperateLog, RewardType};
-use crate::system::{User, UserInfo};
-use crate::util::RestApi;
-use crate::{AppState, api};
-use axum::extract::{Path, State};
-use axum::http::{HeaderMap, StatusCode};
-use axum::response::IntoResponse;
-use axum::routing::{get, post};
-use axum::{Json, Router};
+use crate::{
+    AppState,
+    api::{self, War},
+    core::registration,
+    orange::operate_log::{OperateLog, RewardType},
+    system::{User, UserInfo},
+    util::RestApi,
+};
+use axum::{
+    Json, Router,
+    extract::{Path, State},
+    http::{HeaderMap, StatusCode},
+    response::IntoResponse,
+    routing::{get, post},
+};
 use axum_auth::AuthBearer;
+
 pub use clan::*;
 pub use clan_point::*;
 pub use round::Round;

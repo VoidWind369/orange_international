@@ -1,11 +1,10 @@
-use crate::AppState;
-use crate::safety::authorization::VoidToken;
-use crate::system::LoginLog;
-use crate::util::RestApi;
-use axum::Router;
-use axum::extract::{Path, State};
-use axum::response::IntoResponse;
-use axum::routing::get;
+use crate::{AppState, safety::authorization::VoidToken, system::LoginLog, util::RestApi};
+use axum::{
+    Router,
+    extract::{Path, State},
+    response::IntoResponse,
+    routing::get,
+};
 use axum_msgpack::MsgPack;
 use void_log::log_info;
 
