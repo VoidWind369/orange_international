@@ -39,6 +39,7 @@ pub fn router() -> Router<AppState> {
         .route("/clan_point/{id}", get(clan_point))
         // 时间发布相关
         .route("/round", get(rounds).post(round_insert))
+        .route("/round_{page}/{page_size}", get(rounds_page))
         .route("/last_round", get(last_round))
         // 对战记录相关
         .route("/track", get(tracks).post(new_track))
@@ -53,6 +54,7 @@ pub fn router() -> Router<AppState> {
         .route("/clan_user", post(insert_cu).delete(delete_cu))
         // 操作日志相关
         .route("/operate_log", get(operate_logs))
+        .route("/operate_log_{page}/{page_size}", get(operate_logs_page))
 }
 
 /// # All Clan
@@ -266,6 +268,28 @@ async fn rounds(
 
     let res = Round::select_all(&app_state.pool).await.unwrap();
     (StatusCode::OK, RestApi::successful(res))
+}
+
+async fn rounds_page(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path((page, page_size)): Path<(i64, i64)>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
+    }
+    // ********************鉴权********************
+
+    let res = Round::select_page(&app_state.pool, page, page_size)
+        .await
+        .unwrap();
+    let count = Round::count(&app_state.pool).await;
+    (
+        StatusCode::OK,
+        RestApi::new_successful(res).data_count(count).builder(),
+    )
 }
 
 async fn last_round(
@@ -922,6 +946,29 @@ async fn operate_logs(
     let res = OperateLog::select_all(&app_state.pool).await;
     if let Ok(r) = res {
         (StatusCode::OK, RestApi::successful(r))
+    } else {
+        (StatusCode::GONE, RestApi::error())
+    }
+}
+
+async fn operate_logs_page(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path((page, page_size)): Path<(i64, i64)>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*operate*log*select") {
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
+    }
+    // ********************鉴权********************
+
+    let res = OperateLog::select_page(&app_state.pool, page, page_size).await;
+    let count = OperateLog::count(&app_state.pool).await;
+    if let Ok(r) = res {
+        (
+            StatusCode::OK,
+            RestApi::new_successful(r).data_count(count).builder(),
+        )
     } else {
         (StatusCode::GONE, RestApi::error())
     }

@@ -2,7 +2,7 @@ use crate::orange::clan_point::ClanPoint;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, FromRow, Pool, Postgres, query, query_as};
+use sqlx::{Error, FromRow, Pool, Postgres, query, query_as, query_scalar};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
@@ -45,6 +45,24 @@ impl OperateLog {
 
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as("select o.*, c.tag, c.name, r.code round_code from orange.operate_log o, orange.round r, orange.clan c where o.round_id = r.id and o.clan_id = c.id order by o.create_time desc").fetch_all(pool).await
+    }
+
+    pub async fn select_page(
+        pool: &Pool<Postgres>,
+        page: i64,
+        page_size: i64,
+    ) -> Result<Vec<Self>, Error> {
+        query_as("select o.*, c.tag, c.name, r.code round_code from orange.operate_log o, orange.round r, orange.clan c where o.round_id = r.id and o.clan_id = c.id order by o.create_time desc limit $1 offset $2")
+            .bind(page_size)
+            .bind(page_size * (page - 1))
+            .fetch_all(pool).await
+    }
+
+    pub async fn count(pool: &Pool<Postgres>) -> i64 {
+        query_scalar("select count(id) from orange.operate_log")
+            .fetch_one(pool)
+            .await
+            .unwrap_or_default()
     }
 
     pub async fn select_clan_round(&self, pool: &Pool<Postgres>) -> Result<Self, Error> {
