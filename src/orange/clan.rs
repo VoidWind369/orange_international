@@ -2,6 +2,7 @@ use crate::{
     api,
     orange::clan_point::ClanPoint,
     system::{User, UserInfo},
+    util::Config,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -70,6 +71,12 @@ impl Display for ClanStatus {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
+pub struct ClanCounts {
+    status: ClanStatus,
+    count: i64,
+}
+
 impl Clan {
     pub fn get_id(&self) -> Uuid {
         self.id.unwrap_or_default()
@@ -98,6 +105,12 @@ impl Clan {
             .fetch_one(pool)
             .await
             .unwrap_or_default()
+    }
+
+    pub async fn counts(pool: &Pool<Postgres>) -> Result<Vec<ClanCounts>, Error> {
+        query_as("select status, count(id) count from orange.clan where status > 0 group by status order by status")
+            .fetch_all(pool)
+            .await
     }
 
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
@@ -273,4 +286,12 @@ impl api::Clan {
             ..Default::default()
         }
     }
+}
+
+#[tokio::test]
+async fn test() {
+    let database = Config::get().await.get_database();
+    let pool = database.get().await;
+    let res = Clan::counts(&pool).await.unwrap();
+    println!("{:?}", res)
 }
