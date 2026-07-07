@@ -55,10 +55,10 @@ impl ClanPoint {
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("insert into orange.clan_point values($1, $2, $3, $3, $4)")
-            .bind(&self.clan_id)
-            .bind(&self.point)
+            .bind(self.clan_id)
+            .bind(self.point)
             .bind(now)
-            .bind(&self.status)
+            .bind(self.status)
             .execute(pool)
             .await
     }
@@ -90,9 +90,9 @@ impl ClanPoint {
     ) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("update orange.clan_point set point = $1, update_time = $2 where clan_id = $3")
-            .bind(&self.point + add)
+            .bind(self.point + add)
             .bind(now)
-            .bind(&self.clan_id)
+            .bind(self.clan_id)
             .execute(pool)
             .await
     }
@@ -115,7 +115,7 @@ impl ClanPoint {
         query("update orange.clan_point set reward_point = reward_point + $1, update_time = $2 where clan_id = $3")
             .bind(reward_add)
             .bind(now)
-            .bind(&self.clan_id)
+            .bind(self.clan_id)
             .execute(pool)
             .await
     }
@@ -140,7 +140,7 @@ impl ClanPoint {
 impl Clan {
     pub async fn point_select(&self, pool: &Pool<Postgres>) -> Result<ClanPoint, Error> {
         query_as("select ocp.*, oc.tag, oc.name from orange.clan_point ocp, orange.clan oc where ocp.clan_id = oc.id and ocp.clan_id = $1")
-            .bind(&self.id)
+            .bind(self.id)
             .fetch_one(pool)
             .await
     }

@@ -138,8 +138,8 @@ impl Clan {
             .bind(&self.tag)
             .bind(&self.name)
             .bind(now)
-            .bind(&self.status)
-            .bind(&self.series_id)
+            .bind(self.status)
+            .bind(self.series_id)
             .execute(pool)
             .await
     }
@@ -150,8 +150,8 @@ impl Clan {
             .bind(&self.tag)
             .bind(&self.name)
             .bind(now)
-            .bind(&self.series_id)
-            .bind(&self.id)
+            .bind(self.series_id)
+            .bind(self.id)
             .execute(pool)
             .await
     }
@@ -160,8 +160,8 @@ impl Clan {
         let now = Utc::now();
         query("update orange.clan set update_time = $1, status = $2 where id = $3")
             .bind(now)
-            .bind(&self.status)
-            .bind(&self.id)
+            .bind(self.status)
+            .bind(self.id)
             .execute(pool)
             .await
     }
@@ -177,14 +177,14 @@ impl Clan {
 
     /// # 接口自动更新
     pub async fn api_insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        let tag = &self.tag.clone().unwrap_or_default();
-        let clan = api::Clan::get(tag).await.api_to_orange();
+        let tag = self.tag.clone().unwrap_or_default();
+        let clan = api::Clan::get(&tag).await.api_to_orange();
         clan.insert(pool).await
     }
 
     pub async fn api_update(&mut self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        let tag = &self.tag.clone().unwrap_or_default();
-        let clan = api::Clan::get(tag).await.api_to_orange();
+        let tag = self.tag.clone().unwrap_or_default();
+        let clan = api::Clan::get(&tag).await.api_to_orange();
         self.tag = clan.tag;
         self.name = clan.name;
         self.update(pool).await
@@ -208,15 +208,15 @@ impl User {
     /// ```
     pub async fn user_clans(&self, pool: &Pool<Postgres>) -> Result<Vec<Clan>, Error> {
         query_as("select c.* from orange.clan c, orange.clan_user cu where c.id = cu.clan_id and cu.user_id = $1 and c.status = 1")
-            .bind(&self.id).fetch_all(pool).await
+            .bind(self.id).fetch_all(pool).await
     }
 }
 
 impl UserInfo {
     pub async fn user_clans(&self, pool: &Pool<Postgres>) -> Result<Vec<Clan>, Error> {
-        log_info!("From Redis {}", &self.get_id());
+        log_info!("From Redis {}", self.get_id());
         query_as("select c.* from orange.clan c, orange.clan_user cu where c.id = cu.clan_id and cu.user_id = $1 and c.status = 1")
-            .bind(&self.get_id()).fetch_all(pool).await
+            .bind(self.get_id()).fetch_all(pool).await
     }
 }
 
@@ -267,8 +267,8 @@ impl ClanUser {
 impl api::Clan {
     pub fn api_to_orange(&self) -> Clan {
         Clan {
-            tag: (&self).tag.clone(),
-            name: (&self).name.clone(),
+            tag: self.tag.clone(),
+            name: self.name.clone(),
             status: Some(ClanStatus::Ready),
             ..Default::default()
         }

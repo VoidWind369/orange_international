@@ -32,13 +32,13 @@ impl Group {
 
     pub async fn group_users(&self, pool: &Pool<Postgres>) -> Result<Vec<User>, Error> {
         query_as("select * from public.user u, public.user_group ug where u.id = ug.user_id  and ug.group_id = $1")
-            .bind(&self.id).fetch_all(pool).await
+            .bind(self.id).fetch_all(pool).await
     }
 }
 
 impl User {
     pub async fn user_groups(&self, pool: &Pool<Postgres>) -> Result<Vec<Group>, Error> {
         query_as("select * from public.group g, public.user_group ug where g.id = ug.group_id and ug.user_id = $1")
-            .bind(&self.id).fetch_all(pool).await
+            .bind(self.id).fetch_all(pool).await
     }
 }

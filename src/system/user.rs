@@ -102,7 +102,7 @@ impl User {
         query("insert into public.user values(DEFAULT, $1, $2, $3, $4, $5, $6, $6, $7)")
             .bind(&self.name)
             .bind(&self.email)
-            .bind(&self.status)
+            .bind(self.status)
             .bind(&self.code)
             .bind(&self.phone)
             .bind(now)
@@ -118,7 +118,7 @@ impl User {
             .bind(&self.email)
             .bind(&self.phone)
             .bind(now)
-            .bind(&self.id)
+            .bind(self.id)
             .execute(pool)
             .await
     }
@@ -126,9 +126,9 @@ impl User {
     pub async fn update_status(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
         let now = Utc::now();
         query("update public.user set status = $1, update_time = $2 where id = $3")
-            .bind(&self.status)
+            .bind(self.status)
             .bind(now)
-            .bind(&self.id)
+            .bind(self.id)
             .execute(pool)
             .await
     }
@@ -139,7 +139,7 @@ impl User {
         query("update public.user set password = $1, update_time = $2 where id = $3")
             .bind(password)
             .bind(now)
-            .bind(&self.id)
+            .bind(self.id)
             .execute(pool)
             .await
     }

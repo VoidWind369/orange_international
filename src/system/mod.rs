@@ -197,10 +197,13 @@ async fn user_update(
 
     log_info!("Updated: {}", &data);
     let res = if data.password.is_some() {
+        log_info!("修改密码");
         data.update_password(&app_state.pool).await
     } else if data.status.is_some() {
+        log_info!("修改状态");
         data.update_status(&app_state.pool).await
     } else {
+        log_info!("修改用户");
         data.update(&app_state.pool).await
     };
 

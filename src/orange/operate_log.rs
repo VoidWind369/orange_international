@@ -1,8 +1,10 @@
 use crate::orange::clan_point::ClanPoint;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use sqlx::{
-    Error, FromRow, Pool, Postgres, postgres::PgQueryResult, query, query_as, query_scalar,
+    Error, FromRow, Pool, Postgres, postgres::PgQueryResult, prelude::Type, query, query_as,
+    query_scalar,
 };
 use uuid::Uuid;
 
@@ -15,7 +17,6 @@ pub struct OperateLog {
     #[serde(skip_deserializing)]
     create_time: DateTime<Utc>,
     pub clan_id: Uuid,
-    #[sqlx(skip)]
     pub reward_type: RewardType,
     #[serde(skip_deserializing)]
     pub tag: String,
@@ -26,19 +27,20 @@ pub struct OperateLog {
     pub remarks: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Type, Serialize_repr, Deserialize_repr, Default)]
+#[repr(i16)]
 pub enum RewardType {
     #[default]
-    HitExternal, // 打虫减分
-    FaceBlack, // 俩黑
-    Penalty,   // 处罚1
-    Penalty2,  // 处罚2
-    Penalty3,  // 处罚3
+    HitExternal = 1, // 打虫减分
+    FaceBlack = 2, // 俩黑
+    Penalty = 31,  // 处罚1
+    Penalty2 = 32, // 处罚2
+    Penalty3 = 33, // 处罚3
 }
 
 impl OperateLog {
     pub fn is_reward_penalty(&self) -> bool {
-        match &self.reward_type {
+        match self.reward_type {
             RewardType::Penalty | RewardType::Penalty2 | RewardType::Penalty3 => true,
             _ => false,
         }
@@ -68,19 +70,20 @@ impl OperateLog {
 
     pub async fn select_clan_round(&self, pool: &Pool<Postgres>) -> Result<Self, Error> {
         query_as("select * from orange.operate_log where clan_id = $1 and round_id = $2")
-            .bind(&self.clan_id)
+            .bind(self.clan_id)
             .bind(self.round_id)
             .fetch_one(pool)
             .await
     }
 
     pub async fn insert(&self, pool: &Pool<Postgres>) -> Result<PgQueryResult, Error> {
-        query("insert into orange.operate_log values (DEFAULT, $1, $2, $3, $4, $5)")
-            .bind(&self.round_id)
+        query("insert into orange.operate_log values (DEFAULT, $1, $2, $3, $4, $5, $6)")
+            .bind(self.round_id)
             .bind(&self.text)
             .bind(Utc::now())
-            .bind(&self.clan_id)
+            .bind(self.clan_id)
             .bind(&self.remarks)
+            .bind(&self.reward_type)
             .execute(pool)
             .await
     }

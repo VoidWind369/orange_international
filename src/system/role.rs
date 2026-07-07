@@ -1,8 +1,8 @@
+use crate::system::Group;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{query_as, Error, FromRow, Pool, Postgres};
+use sqlx::{Error, FromRow, Pool, Postgres, query_as};
 use uuid::Uuid;
-use crate::system::Group;
 
 #[derive(Debug, Clone, PartialEq, Default, FromRow, Serialize, Deserialize)]
 pub struct Role {
@@ -24,6 +24,6 @@ impl Role {
 impl Group {
     pub async fn group_roles(&self, pool: &Pool<Postgres>) -> Result<Vec<Role>, Error> {
         query_as("select * from public.role r, public.group_role rg where r.id = rg.role_id and rg.group_id = $1")
-            .bind(&self.get_id()).fetch_all(pool).await
+            .bind(self.get_id()).fetch_all(pool).await
     }
 }

@@ -21,7 +21,7 @@ impl Display for LoginLog {
         write!(
             f,
             "Login Log\n - Userid{}\n - Login Time: {}\n - Address: {}",
-            &self.user_id, &self.login_time, &self.address
+            self.user_id, self.login_time, self.address
         )
     }
 }

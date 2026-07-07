@@ -54,9 +54,13 @@ pub fn router() -> Router<AppState> {
             get(track_round).post(reverse_track).delete(delete_track),
         )
         // 用户关联相关
-        .route("/user_clans", get(user_clans))
-        .route("/user_clans/{id}", get(userid_clans))
-        .route("/clan_user", post(insert_cu).delete(delete_cu))
+        .route("/user_clans", get(user_info_clans))
+        .route("/user_clans/{id}", get(user_clans))
+        .route(
+            "/clan_user",
+            post(insert_clan_user).delete(delete_clan_user),
+        )
+        .route("/clan_users/{id}", get(clan_users))
         // 操作日志相关
         .route("/operate_log", get(operate_logs))
         .route("/operate_log_{page}/{page_size}", get(operate_logs_page))
@@ -755,7 +759,8 @@ async fn delete_track(
     }
 }
 
-async fn user_clans(
+/// # 缓存查询用户绑定的部落
+async fn user_info_clans(
     State(app_state): State<AppState>,
     AuthBearer(token): AuthBearer,
 ) -> impl IntoResponse {
@@ -774,7 +779,8 @@ async fn user_clans(
     (StatusCode::OK, Json(clans))
 }
 
-async fn userid_clans(
+/// # 用户绑定的部落
+async fn user_clans(
     State(app_state): State<AppState>,
     AuthBearer(token): AuthBearer,
     Path(id): Path<Uuid>,
@@ -791,7 +797,25 @@ async fn userid_clans(
     (StatusCode::OK, Json(clans))
 }
 
-async fn insert_cu(
+/// # 部落绑定的用户
+async fn clan_users(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if let Err(e) = UserInfo::get_user(&token).await {
+        log_warn!("UNAUTHORIZED {e}");
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
+    }
+    // ********************鉴权********************
+
+    let clan = Clan::select(&app_state.pool, id).await.unwrap_or_default();
+    let users = clan.clan_users(&app_state.pool).await.unwrap_or_default();
+    (StatusCode::OK, RestApi::successful(users))
+}
+
+async fn insert_clan_user(
     State(app_state): State<AppState>,
     AuthBearer(token): AuthBearer,
     Json(data): Json<ClanUser>,
@@ -810,7 +834,7 @@ async fn insert_cu(
     }
 }
 
-async fn delete_cu(
+async fn delete_clan_user(
     State(app_state): State<AppState>,
     AuthBearer(token): AuthBearer,
     Json(data): Json<ClanUser>,
