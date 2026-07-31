@@ -129,10 +129,12 @@ async fn clan(
     // ********************鉴权********************
 
     let res = Clan::select(&app_state.pool, id).await;
-    if let Ok(r) = res {
-        (StatusCode::OK, Json(r))
-    } else {
-        (StatusCode::GONE, Json::default())
+    match res {
+        Ok(r) => (StatusCode::OK, Json(r)),
+        Err(e) => {
+            log_error!("{e}");
+            (StatusCode::GONE, Json::default())
+        }
     }
 }
 
@@ -505,8 +507,20 @@ async fn new_track(
         log_info!("国际服自动登记");
         // 查对面标签
         let war = War::get(&self_tag).await;
-        if let Some(opponent_clan_tag) = war.opponent.unwrap_or_default().tag {
-            opponent_clan_tag
+        if war.check_preparation_start_time_error(round.get_round_time()) {
+            log_warn!("记录是上场的");
+            return (StatusCode::GONE, RestApi::failed("Last rount", "上场记录"));
+        }
+        if let Some(opponent_clan_tag) = war.get_opponent().tag {
+            if war.check_preparation_start_time(round.get_round_time()) {
+                opponent_clan_tag
+            } else {
+                log_warn!("开战时间错误");
+                return (
+                    StatusCode::GONE,
+                    RestApi::failed("Not in Round time", "没有在开战时间"),
+                );
+            }
         } else {
             // 未开战
             log_warn!("未开战");

@@ -26,6 +26,10 @@ impl Round {
         self.create_time
     }
 
+    pub fn get_round_time(&self) -> DateTime<Utc> {
+        self.round_time
+    }
+
     pub async fn check_not_now(&self) -> bool {
         self.round_time > Utc::now()
     }

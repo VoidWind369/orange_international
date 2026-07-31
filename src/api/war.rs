@@ -1,5 +1,6 @@
 use crate::{api::clan::ClanIconUrls, util::Config};
 use axum::http::header::AUTHORIZATION;
+use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -49,6 +50,33 @@ struct WarClanMember {
 }
 
 impl War {
+    pub fn get_opponent(&self) -> WarClan {
+        self.opponent.clone().unwrap_or_default()
+    }
+
+    pub fn get_preparation_start_time(&self) -> NaiveDateTime {
+        let time = self.preparation_start_time.clone().unwrap_or_default();
+        NaiveDateTime::parse_from_str(&time, "%Y%m%dT%H%M%S%.3fZ").unwrap()
+    }
+
+    pub fn check_preparation_start_time(&self, round_time: DateTime<Utc>) -> bool {
+        let pst = self.get_preparation_start_time().and_utc();
+        let add_rt = round_time.checked_add_signed(TimeDelta::hours(1)).unwrap();
+        let sub_rt = round_time
+            .checked_sub_signed(TimeDelta::minutes(5))
+            .unwrap();
+        pst < add_rt || pst > sub_rt
+    }
+
+    pub fn check_preparation_start_time_error(&self, round_time: DateTime<Utc>) -> bool {
+        let pst = self.get_preparation_start_time();
+        let add_pst = pst
+            .checked_add_signed(TimeDelta::hours(20))
+            .unwrap()
+            .and_utc();
+        round_time > add_pst
+    }
+
     pub async fn get(tag: &str) -> Self {
         let coc_api = Config::get().await.get_api();
         let token = format!("Bearer {}", coc_api.token.unwrap_or_default());
@@ -91,4 +119,12 @@ async fn test_get_war_clan() {
         .await;
     let a = response.unwrap().text().await.unwrap();
     log_info!("{a}")
+}
+
+#[test]
+fn test_time() {
+    let dt = NaiveDateTime::parse_from_str("20260729T081205.000Z", "%Y%m%dT%H%M%S%.3fZ").unwrap();
+    let utc_dt = DateTime::<Utc>::from_utc(dt, Utc);
+    log_info!("{}", utc_dt);
+    log_info!("{}", dt.and_utc())
 }
