@@ -34,7 +34,10 @@ pub fn router() -> Router<AppState> {
     Router::new()
         // 部落相关
         .route("/clan", get(clans).post(clan_insert).put(clan_update))
-        .route("/clan_{page}/{page_size}", get(clans_page))
+        .route(
+            "/clan_{page}/{page_size}",
+            get(clans_page).post(clan_status),
+        )
         .route("/clan_search", get(clan_counts).post(clan_search))
         .route("/clan/{id}", get(clan).delete(clan_delete))
         .route("/clan/{tag}/{is_global}", get(clan_tag))
@@ -99,6 +102,28 @@ async fn clans_page(
         .await
         .unwrap();
     let count = Clan::count(&app_state.pool).await;
+    (
+        StatusCode::OK,
+        RestApi::new_successful(res).data_count(count).builder(),
+    )
+}
+
+async fn clan_status(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path((page, page_size)): Path<(i64, i64)>,
+    Json(status): Json<ClanStatus>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*clan*select") {
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
+    }
+    // ********************鉴权********************
+
+    let res = Clan::select_status(&app_state.pool, status, page, page_size)
+        .await
+        .unwrap();
+    let count = Clan::count_status(&app_state.pool, status).await;
     (
         StatusCode::OK,
         RestApi::new_successful(res).data_count(count).builder(),

@@ -100,6 +100,7 @@ impl Clan {
             .await
     }
 
+    /// # 部落统计
     pub async fn count(pool: &Pool<Postgres>) -> i64 {
         query_scalar("select count(id) from orange.clan")
             .fetch_one(pool)
@@ -107,10 +108,35 @@ impl Clan {
             .unwrap_or_default()
     }
 
+    /// # 部落各状态统计
     pub async fn counts(pool: &Pool<Postgres>) -> Result<Vec<ClanCounts>, Error> {
         query_as("select status, count(id) count from orange.clan where status > 0 group by status order by status")
             .fetch_all(pool)
             .await
+    }
+
+    /// # 按状态查询部落列表
+    pub async fn select_status(
+        pool: &Pool<Postgres>,
+        status: ClanStatus,
+        page: i64,
+        page_size: i64,
+    ) -> Result<Vec<Self>, Error> {
+        query_as("select * from orange.clan where status = $1 order by id limit $2 offset $3")
+            .bind(status)
+            .bind(page_size)
+            .bind(page_size * (page - 1))
+            .fetch_all(pool)
+            .await
+    }
+
+    /// # 按状态查询部落统计
+    pub async fn count_status(pool: &Pool<Postgres>, status: ClanStatus) -> i64 {
+        query_scalar("select count(id) from orange.clan where status = $1")
+            .bind(status)
+            .fetch_one(pool)
+            .await
+            .unwrap_or_default()
     }
 
     pub async fn select(pool: &Pool<Postgres>, id: Uuid) -> Result<Self, Error> {
