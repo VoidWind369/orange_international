@@ -141,6 +141,21 @@ fn sql(sql_text: &str) -> &'static str {
     format!("{base_sql} {sql_text}").leak()
 }
 
+fn sql_count(sql_text: &str) -> &'static str {
+    let base_sql = "SELECT
+            count(ot.*)
+        FROM
+            orange.track ot,
+            orange.round r,
+            orange.clan c1,
+            orange.clan c2
+        WHERE
+            ot.round_id = r.\"id\"
+            AND ot.self_clan_id = c1.\"id\"
+            AND ot.rival_clan_id = c2.\"id\"";
+    format!("{base_sql} {sql_text}").leak()
+}
+
 impl Track {
     fn set_reward_info(&mut self, reward_info: TrackRewardInfo) {
         self.reward_info = Some(Json(reward_info));
@@ -329,6 +344,36 @@ impl Track {
             .fetch_one(pool)
             .await
             .unwrap_or_default()
+    }
+
+    /// # 搜索查询
+    pub async fn select_search(
+        pool: &Pool<Postgres>,
+        text: &str,
+        page: i64,
+        page_size: i64,
+    ) -> Result<Vec<Self>, Error> {
+        let text = format!("%{text}%");
+        query_as(sql(
+            "and (c1.tag like $1 or c2.tag like $1 or c1.name like $1 or c2.name like $1) order by create_time desc limit $2 offset $3",
+        ))
+        .bind(text)
+        .bind(page_size)
+        .bind(page_size * (page - 1))
+        .fetch_all(pool)
+        .await
+    }
+
+    /// # 分页搜索数据总数
+    pub async fn count_search(pool: &Pool<Postgres>, text: &str) -> i64 {
+        let text = format!("%{text}%");
+        query_scalar(sql_count(
+            "and (c1.tag like $1 or c2.tag like $1 or c1.name like $1 or c2.name like $1)",
+        ))
+        .bind(text)
+        .fetch_one(pool)
+        .await
+        .unwrap_or_default()
     }
 
     /// # 查询是否已登记

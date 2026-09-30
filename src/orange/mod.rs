@@ -48,7 +48,10 @@ pub fn router() -> Router<AppState> {
         .route("/last_round", get(last_round))
         // 对战记录相关
         .route("/track", get(tracks).post(new_track))
-        .route("/track_{page}/{page_size}", get(tracks_page))
+        .route(
+            "/track_{page}/{page_size}",
+            get(tracks_page).post(track_search),
+        )
         .route(
             "/track/{id}",
             get(track_round).post(reverse_track).delete(delete_track),
@@ -412,6 +415,29 @@ async fn tracks_page(
         .unwrap();
 
     let count = Track::count(&app_state.pool).await;
+    (
+        StatusCode::OK,
+        RestApi::new_successful(res).data_count(count).builder(),
+    )
+}
+
+async fn track_search(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Path((page, page_size)): Path<(i64, i64)>,
+    Json(text): Json<String>,
+) -> impl IntoResponse {
+    // ********************鉴权********************
+    if !token.eq("cfa*track*select") {
+        return (StatusCode::UNAUTHORIZED, RestApi::unauthorized());
+    }
+    // ********************鉴权********************
+
+    log_info!("Track {}", &text);
+    let res = Track::select_search(&app_state.pool, &text, page, page_size)
+        .await
+        .unwrap();
+    let count = Track::count_search(&app_state.pool, &text).await;
     (
         StatusCode::OK,
         RestApi::new_successful(res).data_count(count).builder(),
