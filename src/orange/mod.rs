@@ -5,10 +5,12 @@ mod round;
 mod series;
 mod track;
 
+use crate::api;
+use crate::core::RegResponse;
 use crate::{
     AppState,
-    api::{self, War},
-    core::registration,
+    api::War,
+    core::{TrackReg, reverse},
     orange::operate_log::{OperateLog, RewardType},
     system::{User, UserInfo},
     util::RestApi,
@@ -51,6 +53,7 @@ pub fn router() -> Router<AppState> {
         .route("/last_round", get(last_round))
         // 对战记录相关
         .route("/track", get(tracks).post(new_track))
+        .route("/new_track", get(tracks).post(new_track_test))
         .route(
             "/track_{page}/{page_size}",
             get(tracks_page).post(track_search),
@@ -70,6 +73,21 @@ pub fn router() -> Router<AppState> {
         // 操作日志相关
         .route("/operate_log", get(operate_logs))
         .route("/operate_log_{page}/{page_size}", get(operate_logs_page))
+}
+
+async fn new_track_test(
+    State(app_state): State<AppState>,
+    AuthBearer(token): AuthBearer,
+    Json(data): Json<TrackReg>,
+) -> impl IntoResponse {
+    let res = data.new_reg(&app_state.pool).await;
+    match res {
+        RegResponse::Successful(track) => RestApi::successful(track),
+        RegResponse::NotRound => RestApi::failed("Not Found", "不存在"),
+        RegResponse::TagNotFound => RestApi::failed("Tag Not Found", "标签不存在"),
+        RegResponse::ClanNotFound(clan_tag) => RestApi::failed("Clan Not Found", "部落不存在"),
+        RegResponse::ClanNotOwned(clan_tag) => RestApi::failed("Clan Not Owned", "部落不属于联盟"),
+    }
 }
 
 /// # All Clan
@@ -795,7 +813,7 @@ async fn reverse_track(
     }
     // ********************鉴权********************
 
-    let res = registration::reverse(&app_state.pool, id).await;
+    let res = reverse::reverse(&app_state.pool, id).await;
 
     if let Ok(r) = res {
         (

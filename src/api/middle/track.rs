@@ -1,5 +1,5 @@
 use crate::{
-    core::registration::ClanTag,
+    core::ClanTag,
     orange::{Clan, ClanStatus, Track, TrackResult, TrackType},
 };
 use reqwest::Client;

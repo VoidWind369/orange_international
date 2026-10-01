@@ -97,6 +97,7 @@ impl ClanPoint {
             .await
     }
 
+    /// * 上限五张券
     pub async fn update_reward_point(
         &self,
         pool: &Pool<Postgres>,

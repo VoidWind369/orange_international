@@ -1,32 +1,32 @@
-use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Postgres, postgres::PgQueryResult};
+use chrono::Utc;
+use sqlx::{Pool, Postgres, types::Json};
 use uuid::Uuid;
-use void_log::log_info;
+use void_log::{log_info, log_warn};
 
 use crate::{
     api::{BZ_UUID, MiddleTrackApi, War},
-    orange::{Clan, ClanPoint, ClanStatus, Round, Track, TrackResult, TrackType},
+    core::{ClanTag, RegResponse, TrackReg},
+    orange::{Clan, ClanPoint, ClanStatus, Round, Track, TrackResult, TrackRewardInfo, TrackType},
 };
 
-pub enum RegResponse {
-    Successful,
-    NotRound,
-    TagNotFound,
-    ClanNotFound(ClanTag),
-    ClanNotOwned(ClanTag),
-}
+impl ClanTag {
+    fn new(tag: String, is_global: bool) -> Self {
+        Self { tag, is_global }
+    }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrackReg {
-    self_tag: String,
-    rival_tag: Option<String>,
-    last: Option<bool>,
-    is_global: Option<bool>,
-}
+    async fn get_clan(&self, pool: &Pool<Postgres>) -> Result<Clan, sqlx::Error> {
+        Clan::select_tag(pool, &self.tag, self.is_global).await
+    }
 
-pub struct ClanTag {
-    pub tag: String,
-    pub is_global: bool,
+    async fn get_war_rival_tag(&self) -> Option<String> {
+        let war = War::get(&self.tag).await;
+        if let Some(opponent_clan_tag) = war.opponent.unwrap_or_default().tag {
+            Some(opponent_clan_tag)
+        } else {
+            // 未开战
+            None
+        }
+    }
 }
 
 impl TrackReg {
@@ -91,44 +91,80 @@ impl TrackReg {
             return RegResponse::ClanNotOwned(self_tag);
         };
 
+        let mut track = Track {
+            self_clan_id: self_clan.get_id(),
+            create_time: Utc::now(),
+            round_id: round.get_id(),
+            reward_info: todo!(),
+            round_code: Some(round.get_code()),
+            self_tag: self_clan.tag,
+            self_name: self_clan.name,
+            ..Default::default()
+        };
+
         // 对家数据库Clan
         if let Ok(rival_clan) = rival_tag.get_clan(pool).await {
+            // 先统计积分
+            let mut self_point = self_clan.point_select(pool).await.unwrap_or_default();
+            let mut rival_point = rival_clan.point_select(pool).await.unwrap_or_default();
+            self_point.clan_id = self_clan.get_id(); // 可能无记录先赋值id
+            rival_point.clan_id = rival_clan.get_id(); // 可能无记录先赋值id
+
+            // 补全对手信息
+            track.rival_clan_id = rival_clan.get_id();
+            track.rival_tag = rival_clan.tag;
+            track.rival_name = rival_clan.name;
+
+            // 初始化积分信息
+            track.self_history_point = self_point.point;
+            track.rival_history_point = rival_point.point;
+            track.self_now_point = self_point.point; // 先默认无变化
+            track.rival_now_point = rival_point.point; // 先默认无变化
+
             // 判断对方状态
             match rival_clan.status {
                 // 正常部落
                 Some(ClanStatus::Ready) => {
-                    let mut self_point = self_clan.point_select(pool).await.unwrap_or_default();
-                    let mut rival_point = rival_clan.point_select(pool).await.unwrap_or_default();
-                    self_point.clan_id = self_clan.get_id();
-                    rival_point.clan_id = rival_clan.get_id();
-                    self.ready_track(&self_point, &rival_point, pool).await;
+                    self.ready_track(&mut self_point, &mut rival_point, track, pool)
+                        .await
                 }
                 // 黑名单部落
-                Some(ClanStatus::Blacklist) => self.not_own_track(&ClanStatus::Blacklist),
-                // 友盟部落
+                Some(ClanStatus::Blacklist) => self.not_own_track(&ClanStatus::Blacklist, track),
+                // 友盟部落/外部/锁定
                 Some(status) => {
                     if let Ok(api) = self_tag.middle_api().await {
-                        self.ally_track(&api, pool).await;
+                        self.ally_track(&api, track, pool).await
                     } else {
-                        self.not_own_track(&status)
-                    };
+                        self.not_own_track(&status, track)
+                    }
                 }
                 // 系统故障
                 None => return RegResponse::ClanNotOwned(rival_tag),
-            }
+            };
         } else {
-            rival_tag.middle_api().await;
+            // 数据库无数据访问中间库
+            if let Ok(api) = self_tag.middle_api().await {
+                self.ally_track(&api, track, pool).await
+            } else {
+                log_warn!("数据严重缺失");
+                self.not_own_track(&ClanStatus::Other, track)
+            };
         };
 
-        RegResponse::Successful
+        // 数据入库
+        track.insert(pool).await.unwrap();
+
+        RegResponse::Successful(track)
     }
 
+    /// # 正常与奖惩登记
     async fn ready_track(
         &self,
-        self_point: &ClanPoint,
-        rival_point: &ClanPoint,
+        self_point: &mut ClanPoint,
+        rival_point: &mut ClanPoint,
+        mut track: Track,
         pool: &Pool<Postgres>,
-    ) -> (TrackResult, TrackType) {
+    ) -> Track {
         // 先后手转换
         let (first, last) = if self.is_last() {
             (rival_point, self_point)
@@ -136,32 +172,67 @@ impl TrackReg {
             (self_point, rival_point)
         };
 
-        if first.reward_point > 0 {
-            // 惩罚先手输
-            (TrackResult::Lose, TrackType::Penalty)
-        } else if first.reward_point < 0 {
+        // 转化后track的self=first，rival=last
+        let mut reward_info = TrackRewardInfo {
+            self_history: first.reward_point,
+            rival_history: last.reward_point,
+            self_now: first.reward_point, // 先默认无变化
+            rival_now: last.reward_point, // 先默认无变化
+        };
+
+        // 直接赋值输赢、类别
+        (track.result, track.r#type) = if first.reward_point > 0 {
             // 奖励先手赢
+            first.update_reward_point_base(pool, -1).await.unwrap();
+            track.result = TrackResult::Win;
+            track.r#type = TrackType::Award;
+            reward_info.self_now = first.reward_point - 1;
             (TrackResult::Lose, TrackType::Award)
-        } else if last.reward_point > 0 {
-            // 惩罚后手输
+        } else if first.reward_point < 0 {
+            // 惩罚先手输
+            first.update_reward_point_base(pool, 1).await.unwrap();
+            track.result = TrackResult::Lose;
+            track.r#type = TrackType::Award;
+            reward_info.self_now = first.reward_point + 1;
             (TrackResult::Lose, TrackType::Penalty)
-        } else if last.reward_point < 0 {
-            // 奖励对手赢
+        } else if last.reward_point > 0 {
+            // 奖励后手赢
+            last.update_reward_point_base(pool, -1).await.unwrap();
+            track.result = TrackResult::Lose;
+            track.r#type = TrackType::Award;
+            reward_info.self_now = last.reward_point - 1;
             (TrackResult::Lose, TrackType::Award)
+        } else if last.reward_point < 0 {
+            // 惩罚后手输
+            last.update_reward_point_base(pool, 1).await.unwrap();
+            track.result = TrackResult::Win;
+            track.r#type = TrackType::Penalty;
+            reward_info.self_now = last.reward_point + 1;
+            (TrackResult::Lose, TrackType::Penalty)
         } else {
             // 正常对局
-            (point_check(first, last, pool).await, TrackType::Internal)
-        }
+            (
+                point_check(first, last, &mut track, pool).await,
+                TrackType::Internal,
+            )
+        };
+
+        track.reward_info = Some(Json(reward_info));
+
+        track
     }
 
+    /// # 友盟登记
     async fn ally_track(
         &self,
         api: &MiddleTrackApi,
+        mut track: Track,
         pool: &Pool<Postgres>,
-    ) -> (TrackResult, TrackType) {
+    ) -> Track {
         // 合作联盟
-        let self_tag = format!("#{}", api.my_tag.replace("#", ""));
         let rival_tag = format!("#{}", api.opp_tag.replace("#", ""));
+        track.rival_tag = Some(rival_tag.clone());
+        track.rival_name = api.opp_name.clone();
         // 格式化输赢tag
         let win_tag = format!("#{}", api.win_tag.replace("#", ""));
 
@@ -196,26 +267,39 @@ impl TrackReg {
 
         // 判断输赢写入Track
         if win_tag.eq(&rival_tag) {
-            (TrackResult::Lose, TrackType::Alliance)
+            track.result = TrackResult::Lose;
+            track.r#type = TrackType::Alliance;
         } else if api.err {
-            (TrackResult::None, TrackType::External)
+            track.result = TrackResult::None;
+            track.r#type = TrackType::External;
         } else {
-            (TrackResult::Win, TrackType::Alliance)
-        }
+            track.result = TrackResult::Win;
+            track.r#type = TrackType::Alliance;
+        };
+        track
     }
 
-    fn not_own_track(&self, status: &ClanStatus) {
+    fn not_own_track(&self, status: &ClanStatus, mut track: Track) -> Track {
         // 必赢
+        track.r#type = match status {
+            ClanStatus::Locked | ClanStatus::Other => TrackType::External,
+            ClanStatus::Blacklist => TrackType::Blacklist,
+            ClanStatus::Ready => TrackType::Internal,
+            ClanStatus::Ally => TrackType::Alliance,
+        };
+        track.result = TrackResult::None;
+        track
     }
 }
 
 // 常规积分比对
 async fn point_check(
-    first_point: &ClanPoint,
-    last_point: &ClanPoint,
+    first_point: &mut ClanPoint,
+    last_point: &mut ClanPoint,
+    track: &mut Track,
     pool: &Pool<Postgres>,
 ) -> TrackResult {
-    if first_point.point < last_point.point {
+    let res = if first_point.point < last_point.point {
         // 先手赢
         TrackResult::Win
     } else if first_point.point > last_point.point {
@@ -229,7 +313,7 @@ async fn point_check(
         let last_tracks = Track::select_desc_limit(pool, last_point.clan_id, 10)
             .await
             .unwrap_or_default();
-        // 计数
+        // 历史战绩计数
         if count_win(first_tracks, first_point.clan_id)
             <= count_win(last_tracks, last_point.clan_id)
         {
@@ -239,7 +323,27 @@ async fn point_check(
             // 后手赢
             TrackResult::Lose
         }
-    }
+    };
+    match res {
+        TrackResult::Win => {
+            first_point.point += 1;
+            last_point.point -= 1;
+            track.self_now_point = first_point.point;
+            track.rival_now_point = last_point.point;
+            first_point.insert_or_update(pool).await.unwrap();
+            last_point.insert_or_update(pool).await.unwrap();
+        }
+        TrackResult::None => todo!(),
+        TrackResult::Lose => {
+            first_point.point -= 1;
+            last_point.point += 1;
+            track.self_now_point = first_point.point;
+            track.rival_now_point = last_point.point;
+            first_point.insert_or_update(pool).await.unwrap();
+            last_point.insert_or_update(pool).await.unwrap();
+        }
+    };
+    res
 }
 
 // 对比历史战绩
@@ -253,72 +357,4 @@ fn count_win(tracks: Vec<Track>, clan_id: Uuid) -> i64 {
         }
     }
     count
-}
-
-impl ClanTag {
-    fn new(tag: String, is_global: bool) -> Self {
-        Self { tag, is_global }
-    }
-
-    async fn get_clan(&self, pool: &Pool<Postgres>) -> Result<Clan, sqlx::Error> {
-        Clan::select_tag(pool, &self.tag, self.is_global).await
-    }
-
-    async fn get_war_rival_tag(&self) -> Option<String> {
-        let war = War::get(&self.tag).await;
-        if let Some(opponent_clan_tag) = war.opponent.unwrap_or_default().tag {
-            Some(opponent_clan_tag)
-        } else {
-            // 未开战
-            None
-        }
-    }
-}
-
-pub async fn reverse(pool: &Pool<Postgres>, track_id: Uuid) -> sqlx::Result<PgQueryResult> {
-    let track = Track::select(pool, track_id).await;
-    if let Ok(track) = track {
-        // 非内部匹配禁止逆转
-        if track.r#type != TrackType::Internal {
-            return Err(sqlx::Error::PoolClosed);
-        };
-
-        // 查先手积分
-        let self_point = ClanPoint::select(pool, track.self_clan_id).await?;
-
-        // 查对手积分
-        let rival_point = ClanPoint::select(pool, track.rival_clan_id).await?;
-
-        match track.result {
-            TrackResult::Win => {
-                let mut re_track = track;
-                re_track.result = TrackResult::Lose;
-                re_track.self_now_point = re_track.self_history_point - 1;
-                re_track.rival_now_point = re_track.rival_history_point + 1;
-                re_track.r#type = TrackType::Reverse;
-
-                // 更新积分
-                self_point.update_point(pool, -2).await?;
-                rival_point.update_point(pool, 2).await?;
-
-                re_track.insert(pool).await
-            }
-            TrackResult::None => return Err(sqlx::Error::PoolClosed),
-            TrackResult::Lose => {
-                let mut re_track = track;
-                re_track.result = TrackResult::Lose;
-                re_track.self_now_point = re_track.self_history_point + 1;
-                re_track.rival_now_point = re_track.rival_history_point - 1;
-                re_track.r#type = TrackType::Reverse;
-
-                // 更新积分
-                self_point.update_point(pool, 2).await.unwrap();
-                rival_point.update_point(pool, -2).await.unwrap();
-
-                re_track.insert(pool).await
-            }
-        }
-    } else {
-        Err(sqlx::Error::PoolClosed)
-    }
 }

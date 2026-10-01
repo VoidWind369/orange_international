@@ -18,8 +18,8 @@ impl Round {
         self.id
     }
 
-    pub fn get_code(&self) -> &str {
-        &self.code
+    pub fn get_code(&self) -> String {
+        self.code.to_string()
     }
 
     pub fn get_create_time(&self) -> DateTime<Utc> {
