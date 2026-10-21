@@ -91,14 +91,14 @@ impl TrackReg {
             return RegResponse::ClanNotOwned(self_tag);
         };
 
+        // 初始化Track
         let mut track = Track {
             self_clan_id: self_clan.get_id(),
             create_time: Utc::now(),
             round_id: round.get_id(),
-            reward_info: todo!(),
             round_code: Some(round.get_code()),
-            self_tag: self_clan.tag,
-            self_name: self_clan.name,
+            self_tag: self_clan.get_tag(),
+            self_name: self_clan.get_name(),
             ..Default::default()
         };
 
@@ -125,17 +125,19 @@ impl TrackReg {
             match rival_clan.status {
                 // 正常部落
                 Some(ClanStatus::Ready) => {
-                    self.ready_track(&mut self_point, &mut rival_point, track, pool)
+                    self.ready_track(&mut self_point, &mut rival_point, &mut track, pool)
                         .await
                 }
                 // 黑名单部落
-                Some(ClanStatus::Blacklist) => self.not_own_track(&ClanStatus::Blacklist, track),
+                Some(ClanStatus::Blacklist) => {
+                    self.not_own_track(&ClanStatus::Blacklist, &mut track)
+                }
                 // 友盟部落/外部/锁定
                 Some(status) => {
                     if let Ok(api) = self_tag.middle_api().await {
-                        self.ally_track(&api, track, pool).await
+                        self.ally_track(&api, &mut track, pool).await
                     } else {
-                        self.not_own_track(&status, track)
+                        self.not_own_track(&status, &mut track)
                     }
                 }
                 // 系统故障
@@ -144,10 +146,10 @@ impl TrackReg {
         } else {
             // 数据库无数据访问中间库
             if let Ok(api) = self_tag.middle_api().await {
-                self.ally_track(&api, track, pool).await
+                self.ally_track(&api, &mut track, pool).await
             } else {
                 log_warn!("数据严重缺失");
-                self.not_own_track(&ClanStatus::Other, track)
+                self.not_own_track(&ClanStatus::Other, &mut track)
             };
         };
 
@@ -162,7 +164,7 @@ impl TrackReg {
         &self,
         self_point: &mut ClanPoint,
         rival_point: &mut ClanPoint,
-        mut track: Track,
+        track: &mut Track,
         pool: &Pool<Postgres>,
     ) -> Track {
         // 先后手转换
@@ -212,21 +214,21 @@ impl TrackReg {
         } else {
             // 正常对局
             (
-                point_check(first, last, &mut track, pool).await,
+                point_check(first, last, track, pool).await,
                 TrackType::Internal,
             )
         };
 
         track.reward_info = Some(Json(reward_info));
 
-        track
+        track.clone()
     }
 
     /// # 友盟登记
     async fn ally_track(
         &self,
         api: &MiddleTrackApi,
-        mut track: Track,
+        track: &mut Track,
         pool: &Pool<Postgres>,
     ) -> Track {
         // 合作联盟
@@ -276,10 +278,10 @@ impl TrackReg {
             track.result = TrackResult::Win;
             track.r#type = TrackType::Alliance;
         };
-        track
+        track.clone()
     }
 
-    fn not_own_track(&self, status: &ClanStatus, mut track: Track) -> Track {
+    fn not_own_track(&self, status: &ClanStatus, track: &mut Track) -> Track {
         // 必赢
         track.r#type = match status {
             ClanStatus::Locked | ClanStatus::Other => TrackType::External,
@@ -288,7 +290,7 @@ impl TrackReg {
             ClanStatus::Ally => TrackType::Alliance,
         };
         track.result = TrackResult::None;
-        track
+        track.clone()
     }
 }
 

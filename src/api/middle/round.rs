@@ -18,7 +18,7 @@ pub struct MiddleRoundApi {
 impl MiddleRoundApi {
     pub async fn get() -> Self {
         let url =
-            Url::parse("http://www.cocbzlm.com:8422/api/wardecider/syncTimeGlobal_alliance/cfa")
+            Url::parse("http://www.cocbzlm.group:8422/api/wardecider/syncTimeGlobal_alliance/cfa")
                 .unwrap();
         log_info!("{}", &url);
 
@@ -36,7 +36,7 @@ impl MiddleRoundApi {
 
     pub async fn _get_text() -> Value {
         let url =
-            Url::parse("http://www.cocbzlm.com:8422/api/wardecider/syncTimeGlobal_alliance/cfa")
+            Url::parse("http://www.cocbzlm.group:8422/api/wardecider/syncTimeGlobal_alliance/cfa")
                 .unwrap();
         log_info!("{}", &url);
 

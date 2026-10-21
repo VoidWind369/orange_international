@@ -82,6 +82,14 @@ impl Clan {
         self.id.unwrap_or_default()
     }
 
+    pub fn get_tag(&self) -> Option<String> {
+        self.tag.clone()
+    }
+
+    pub fn get_name(&self) -> Option<String> {
+        self.name.clone()
+    }
+
     pub async fn select_all(pool: &Pool<Postgres>) -> Result<Vec<Self>, Error> {
         query_as("select * from orange.clan where status >= 1 and status <= 3")
             .fetch_all(pool)

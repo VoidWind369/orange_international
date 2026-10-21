@@ -61,7 +61,7 @@ impl ClanTag {
             "isGlobal": self.is_global,
         });
         let response = Client::new()
-            .post("http://cocbzlm.com:8422/api/wardecider")
+            .post("http://cocbzlm.group:8422/api/wardecider")
             .header("isAdmin", "true")
             .json(&body)
             .send()

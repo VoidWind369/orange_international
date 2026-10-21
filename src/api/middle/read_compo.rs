@@ -24,14 +24,14 @@ where
 
 impl MiddleReadCompo {
     pub async fn get() -> Self {
-        let response = reqwest::get("http://cocbzlm.com:8422/api/accinfo/readCompo")
+        let response = reqwest::get("http://cocbzlm.geoup:8422/api/accinfo/readCompo")
             .await
             .unwrap();
         response.json().await.unwrap()
     }
 
     async fn get_text() -> String {
-        let response = reqwest::get("http://cocbzlm.com:8422/api/accinfo/readCompo")
+        let response = reqwest::get("http://cocbzlm.group:8422/api/accinfo/readCompo")
             .await
             .unwrap();
         response.text().await.unwrap()

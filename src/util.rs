@@ -78,6 +78,10 @@ impl Config {
     pub fn get_api(&self) -> ConfigApi {
         self.coc_api.clone().unwrap_or_default()
     }
+
+    pub fn get_middle_api(&self) -> ConfigApi {
+        self.middle_api.clone().unwrap_or_default()
+    }
 }
 
 impl Default for ConfigServer {
