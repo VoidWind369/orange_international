@@ -13,7 +13,7 @@ pub struct Config {
     database: Option<ConfigDatabase>,
     redis: Option<ConfigDatabase>,
     coc_api: Option<ConfigApi>,
-    middle: Option<ConfigApi>,
+    middle_api: Option<ConfigApi>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -80,7 +80,7 @@ impl Config {
     }
 
     pub fn get_middle(&self) -> ConfigApi {
-        self.middle.clone().unwrap_or_default()
+        self.middle_api.clone().unwrap_or_default()
     }
 }
 
