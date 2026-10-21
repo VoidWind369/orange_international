@@ -37,7 +37,7 @@ impl MiddleViewApi {
     pub async fn get(tag: &str) -> Self {
         let tag = format!("#{}", tag.replace("#", "").to_uppercase());
         let api = Config::get().await.get_middle();
-        let mut url = Url::parse(&format!("{}/accinfo/scores", api.get_url())).unwrap();
+        let mut url = Url::parse(format!("{}/accinfo/scores", api.get_url()).as_str()).unwrap();
         url.query_pairs_mut().append_pair("clanTag", &tag);
         url.query_pairs_mut().append_pair("isGlobal", "true");
         log_info!("{}", &url);
@@ -55,7 +55,7 @@ impl MiddleViewApi {
     pub async fn get_text(tag: &str) -> String {
         let tag = format!("#{}", tag.replace("#", "").to_uppercase());
         let api = Config::get().await.get_middle();
-        let mut url = Url::parse(&format!("{}/accinfo/scores", api.get_url())).unwrap();
+        let mut url = Url::parse(format!("{}/accinfo/scores", api.get_url()).as_str()).unwrap();
         url.query_pairs_mut().append_pair("clanTag", &tag);
         url.query_pairs_mut().append_pair("isGlobal", "true");
         log_info!("{}", &url);
