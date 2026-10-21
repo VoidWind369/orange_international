@@ -1,4 +1,4 @@
-use crate::orange::Round;
+use crate::{orange::Round, util::Config};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -17,9 +17,12 @@ pub struct MiddleRoundApi {
 
 impl MiddleRoundApi {
     pub async fn get() -> Self {
-        let url =
-            Url::parse("http://www.cocbzlm.group:8422/api/wardecider/syncTimeGlobal_alliance/cfa")
-                .unwrap();
+        let api = Config::get().await.get_middle();
+        let url = Url::parse(&format!(
+            "{}/wardecider/syncTimeGlobal_alliance/cfa",
+            api.get_url()
+        ))
+        .unwrap();
         log_info!("{}", &url);
 
         let response = Client::new()
@@ -35,9 +38,12 @@ impl MiddleRoundApi {
     }
 
     pub async fn _get_text() -> Value {
-        let url =
-            Url::parse("http://www.cocbzlm.group:8422/api/wardecider/syncTimeGlobal_alliance/cfa")
-                .unwrap();
+        let api = Config::get().await.get_middle();
+        let url = Url::parse(&format!(
+            "{}/wardecider/syncTimeGlobal_alliance/cfa",
+            api.get_url()
+        ))
+        .unwrap();
         log_info!("{}", &url);
 
         let response = Client::new()

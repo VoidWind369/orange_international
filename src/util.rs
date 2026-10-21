@@ -79,8 +79,8 @@ impl Config {
         self.coc_api.clone().unwrap_or_default()
     }
 
-    pub fn get_middle_api(&self) -> ConfigApi {
-        self.middle_api.clone().unwrap_or_default()
+    pub fn get_middle(&self) -> ConfigApi {
+        self.middle.clone().unwrap_or_default()
     }
 }
 
@@ -139,6 +139,10 @@ impl ConfigDatabase {
 }
 
 impl ConfigApi {
+    pub fn get_url(&self) -> String {
+        self.url.clone().unwrap_or_default()
+    }
+
     pub fn set_url(&self, path: &str) -> String {
         format!("{}/{path}", &self.url.clone().unwrap_or_default())
     }

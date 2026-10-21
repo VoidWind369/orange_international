@@ -1,5 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize};
 
+use crate::util::Config;
+
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct MiddleReadCompo {
@@ -24,14 +26,16 @@ where
 
 impl MiddleReadCompo {
     pub async fn get() -> Self {
-        let response = reqwest::get("http://cocbzlm.geoup:8422/api/accinfo/readCompo")
+        let api = Config::get().await.get_middle();
+        let response = reqwest::get(format!("{}/accinfo/readCompo", api.get_url()))
             .await
             .unwrap();
         response.json().await.unwrap()
     }
 
     async fn get_text() -> String {
-        let response = reqwest::get("http://cocbzlm.group:8422/api/accinfo/readCompo")
+        let api = Config::get().await.get_middle();
+        let response = reqwest::get(format!("{}/accinfo/readCompo", api.get_url()))
             .await
             .unwrap();
         response.text().await.unwrap()

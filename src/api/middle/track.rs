@@ -1,6 +1,7 @@
 use crate::{
     core::ClanTag,
     orange::{Clan, ClanStatus, Track, TrackResult, TrackType},
+    util::Config,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -60,8 +61,9 @@ impl ClanTag {
             "myTag": self.tag,
             "isGlobal": self.is_global,
         });
+        let api = Config::get().await.get_middle();
         let response = Client::new()
-            .post("http://cocbzlm.group:8422/api/wardecider")
+            .post(format!("{}/wardecider", api.get_url()))
             .header("isAdmin", "true")
             .json(&body)
             .send()
@@ -81,8 +83,9 @@ impl MiddleTrackApi {
             "myTag": clan.tag,
             "isGlobal": is_global,
         });
+        let api = Config::get().await.get_middle();
         let response = Client::new()
-            .post("http://cocbzlm.com:8422/api/wardecider")
+            .post(format!("{}/wardecider", api.get_url()))
             .header("isAdmin", "true")
             .json(&body)
             .send()

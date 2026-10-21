@@ -1,4 +1,4 @@
-use crate::middle;
+use crate::{middle, util::Config};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
@@ -36,7 +36,8 @@ pub struct MiddleViewApiDetails {
 impl MiddleViewApi {
     pub async fn get(tag: &str) -> Self {
         let tag = format!("#{}", tag.replace("#", "").to_uppercase());
-        let mut url = Url::parse("http://cocbzlm.com:8422/api/accinfo/scores").unwrap();
+        let api = Config::get().await.get_middle();
+        let mut url = Url::parse(&format!("{}/accinfo/scores", api.get_url())).unwrap();
         url.query_pairs_mut().append_pair("clanTag", &tag);
         url.query_pairs_mut().append_pair("isGlobal", "true");
         log_info!("{}", &url);
@@ -53,7 +54,8 @@ impl MiddleViewApi {
 
     pub async fn get_text(tag: &str) -> String {
         let tag = format!("#{}", tag.replace("#", "").to_uppercase());
-        let mut url = Url::parse("http://cocbzlm.com:8422/api/accinfo/scores").unwrap();
+        let api = Config::get().await.get_middle();
+        let mut url = Url::parse(&format!("{}/accinfo/scores", api.get_url())).unwrap();
         url.query_pairs_mut().append_pair("clanTag", &tag);
         url.query_pairs_mut().append_pair("isGlobal", "true");
         log_info!("{}", &url);
